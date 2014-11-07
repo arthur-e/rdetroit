@@ -1,0 +1,33 @@
+---
+title: "Detroit Metro Land Cover Data"
+author: "K. Arthur Endsley"
+date: "Wednesday, November 05, 2014"
+output: html_document
+---
+
+```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
+library(sp)
+library(raster)
+library(rgdal)
+```
+
+```{r data.management}
+file.loc <- '/home/arthur/Workspace/TermProject/'
+rast <- raster::raster(paste0(file.loc, 'nlcd2001_sample.tif'))
+```
+
+Next, I reclassify the NLCD raster into three classes:
+
+```{r echo=FALSE}
+knitr::kable(data.frame('Input class range'=c('[0-10]', '11 (Open Water)', '[12-20]', '[21-23] (Open and Low, Medium Development)', '24 (High Development)', '[25-99]'), 'Output class'=c(0,NA,0,1,2,0), 'New Class Label'=c('Undeveloped', 'Excluded', 'Undeveloped', 'Low-Intensity Development', 'High-Intensity Development', 'Undeveloped')))
+```
+
+```{r reclass}
+reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
+                           c(20,23,1), c(23,24,2), c(24,99,0)),
+                         byrow=TRUE, ncol=3)
+dev <- reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed on right
+```
+
+
+

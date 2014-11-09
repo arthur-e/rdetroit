@@ -9,16 +9,53 @@ output: pdf_document
 
 All dollar values were adjusted for inflation to 2010 values.
 
-## Potential Measures
+## Potential SocialExplorer Census Measures
 
-* Population density
-* Median age
-* Median income
-* Sex ratio
-* Less than high school graduate (normalized by population 25 years and over)
-* High school graduate (normalized by population 25 years and over)
-* Bachelor's degree  (normalized by population 25 years and over)
-* ...
+* Population density (`SE_T003_001`)
+* Median household income (`SE_T093_001`)
+
+* Normalized by housing unit count (`SE_T155_001`)...
+  * Occupied housing units (`SE_T156_001`)
+  * Occupied housing units: owner occupied (`SE_T156_002`)
+
+* Normalized by land area (`SE_T004_002`)...
+  * Housing unit count (`SE_T155_001`)
+  * Male population (`SE_T005_002`)
+  * Female population (`SE_T005_003`)
+  * White population (`SE_T014_002`)
+  * Black or African American population (`SE_T014_002`)
+  * Asian population (`SE_T014_005`)
+  * Households (`SE_T020_001`)
+  * Family households (`SE_T020_002`)
+  * Married-couple households (`SE_T020_003`)
+  * Family households with Male householder, no spouse present (`SE_T020_005`)
+  * Family households with Female householder, no spouse present (`SE_T020_006`)
+  * Non-family households with Male householder (`SE_T020_008`)
+  * Non-family households with Female householder (`SE_T020_009`)
+  
+* Normalized by family household population (`SE_T025_003`)...
+  * Householders (`SE_T025_004`)
+  * Children in households (`SE_T025_006`)
+  * Grandchildren in households (`SE_T025_007`)
+  * Parents in households (`SE_T025_009`)
+  * Non-relatives in households (`SE_T025_011`)
+  
+* Normalized by non-family household population (`SE_T025_012`)...
+  * Population living alone (`SE_T025_013`)
+  
+* Normalized by total population (`SE_T025_001`)...
+  * Population in group quarters (`SE_T025_016`)
+  * Population 16 years and over (`SE_T069_001`)
+  * Population poor or struggling (`SE_T185_004`)
+
+* Normalized by population in group quarters (`SE_T025_016`)...
+  * Institutionalized population (`SE_T025_017`)
+  
+* Normalized by population 16 years and over (`SE_T069_001`)...
+  * Population 16 and over in the labor force (`SE_T069_002`)
+  
+* Normalized by population 16 and over in the labor force (`SE_T069_002`)...
+  * Employed civilians in the labor force (`SE_T069_005`)
 
 ## U.S. Census
 
@@ -29,8 +66,10 @@ All dollar values were adjusted for inflation to 2010 values.
 
 1. Prep census data with "naive" approach; using only corresponding census tracts (to bypass tedious crosswalking for now).
 2. Spatially join census tract attributes to census tract boundaries.
-3. Set up Bayesian network.
-4. Learn Bayesian network on 2001 NLCD up to 2006 NLCD.
+3. [For SEMCOG data... Create common grid of SEMCOG layers.]
+4. Rasterize census tracts to NLCD grid.
+5. Set up Bayesian network.
+6. Learn Bayesian network on 2001 NLCD up to 2006 NLCD.
 
 ## Cross-Walking Census Data
 
@@ -49,6 +88,8 @@ sudo -u arthur psql -d rdetroit -c "COPY census_crosswalk (trtid00, trtid10, wei
 ```{r}
 setwd('/home/arthur/Downloads')
 options(stringsAsFactors=FALSE)
+
+census.vars <- c('SE_T003_001', 'SE_T093_001', 'SE_T155_001', 'SE_T156_001', 'SE_T156_002', 'SE_T004_002', 'SE_T005_002', 'SE_T005_003', 'SE_T014_002', 'SE_T014_005', 'SE_T020_001', 'SE_T020_002', 'SE_T020_003', 'SE_T020_005', 'SE_T020_006', 'SE_T020_008', 'SE_T020_009', 'SE_T025_003', 'SE_T025_004', 'SE_T025_006', 'SE_T025_007', 'SE_T025_009', 'SE_T025_011', 'SE_T025_012', 'SE_T025_013', 'SE_T025_001', 'SE_T025_016', 'SE_T069_001', 'SE_T185_004', 'SE_T025_017', 'SE_T069_002', 'SE_T069_005')
 
 census2000 <- read.csv('census2000.csv', header=T, skip=1) # 2000 Census data
 acs2006.2010 <- read.csv('acs2006-2010.csv', header=T, skip=1) # 2006-2010 ACS data

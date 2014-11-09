@@ -2,8 +2,70 @@
 title: "Detroit Metro Land Cover Data"
 author: "K. Arthur Endsley"
 date: "Wednesday, November 05, 2014"
-output: html_document
+output: pdf_document
 ---
+
+# Data Sources
+
+All dollar values were adjusted for inflation to 2010 values.
+
+## Potential Measures
+
+* Population density
+* Median age
+* Median income
+* Sex ratio
+* Less than high school graduate (normalized by population 25 years and over)
+* High school graduate (normalized by population 25 years and over)
+* Bachelor's degree  (normalized by population 25 years and over)
+* ...
+
+## U.S. Census
+
+* [Decennial Census overview and 1990, 2000 datasets](http://www.census.gov/prod/www/decennial.html)
+* [Maps and geographic data](http://www.census.gov/geo/maps-data/)
+
+# Methodology
+
+1. Prep census data with "naive" approach; using only corresponding census tracts (to bypass tedious crosswalking for now).
+2. Spatially join census tract attributes to census tract boundaries.
+3. Set up Bayesian network.
+4. Learn Bayesian network on 2001 NLCD up to 2006 NLCD.
+
+## Cross-Walking Census Data
+
+From [U.S. 2010: Discover America in a New Century](http://www.s4.brown.edu/us2010/Researcher/ltdb3.htm): "The crosswalk identifies what portion of a tract in one year should be allocated to a 2010 tract. For every decennial year from 1970 to 2000, every row in the crosswalk lists a 2010 tract ID, the ID of a tract in the source year that contributes to it, and the share of the source tract's population attributes that should be allocated to the 2010 tract. In cases where there is an exact correspondence between the source tract and the 2010 tract, there is only one row of data for the 2010 tract. Otherwise there are as many rows as there are contributing tracts."
+
+Reference to use is: "John R. Logan, Zengwang Xu, and Brian Stults. 2012. “Interpolating US Decennial Census Tract Data from as Early as 1970 to 2010: A Longitudinal Tract Database” Professional Geographer, forthcoming."
+
+```
+chmod 664 crosswalk_2000_2010.csv
+sudo -u arthur psql -d rdetroit -c "CREATE TABLE census_crosswalk (trtid00 character varying(255), trtid10 character varying(255), weight numeric, placefp10 integer, cbsa10 integer, metdiv10 integer, ccflag10 integer, changetype integer)"
+sudo -u arthur psql -d rdetroit -c "COPY census_crosswalk (trtid00, trtid10, weight, placefp10, cbsa10, metdiv10, ccflag10, changetype) FROM '/home/arthur/Downloads/crosswalk_2000_2010.csv' WITH (FORMAT csv, HEADER)"
+```
+
+## Naive Census Tract Correspondence
+
+```{r}
+setwd('/home/arthur/Downloads')
+options(stringsAsFactors=FALSE)
+
+census2000 <- read.csv('census2000.csv', header=T, skip=1) # 2000 Census data
+acs2006.2010 <- read.csv('acs2006-2010.csv', header=T, skip=1) # 2006-2010 ACS data
+tracts <- union(census2000$Census.Tract, acs2006.2010$Census.Tract)
+xwalk <- arrange(read.csv('crosswalk_2000_2010.csv', colClasses=c('character', 'character')),
+                 trtid10) # 2000 to 2010 Crosswalk data
+
+require(plyr)
+census2000 <- mutate(census2000, trtid=paste0(Geo_STATE, Geo_COUNTY, Geo_TRACT))
+acs2006.2010 <- mutate(acs2006.2010, trtid=paste0(Geo_STATE, Geo_COUNTY, Geo_TRACT))
+
+# Subset the crosswalk table to just those tracts in our census data
+xwalk <- subset(xwalk, trtid00 %in% intersect(census2000$trtid, xwalk$trtid00),
+                select=c(trtid00, trtid10, weight))
+```
+
+## Land Cover Data Preparation
 
 ```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
 library(sp)
@@ -18,8 +80,8 @@ rast <- raster::raster(paste0(file.loc, 'nlcd2001_sample.tif'))
 
 Next, I reclassify the NLCD raster into three classes:
 
-```{r echo=FALSE}
-knitr::kable(data.frame('Input class range'=c('[0-10]', '11 (Open Water)', '[12-20]', '[21-23] (Open and Low, Medium Development)', '24 (High Development)', '[25-99]'), 'Output class'=c(0,NA,0,1,2,0), 'New Class Label'=c('Undeveloped', 'Excluded', 'Undeveloped', 'Low-Intensity Development', 'High-Intensity Development', 'Undeveloped')))
+```{r reclass.explication, echo=FALSE}
+knitr::kable(data.frame('Input Class Range'=c('[0-10]', '11 (Open Water)', '[12-20]', '[21-23] (Open and Low, Medium Development)', '24 (High Development)', '[25-99]'), 'Output Class'=c(0,NA,0,1,2,0), 'New Class Label'=c('Undeveloped', 'Excluded', 'Undeveloped', 'Low-Intensity Development', 'High-Intensity Development', 'Undeveloped')), col.names=c('Input Class Range', 'Output Class', 'New Class Label'))
 ```
 
 ```{r reclass}
@@ -29,5 +91,7 @@ reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
 dev <- reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed on right
 ```
 
+# Questions
 
+* What census tract boundaries are used in the American Community Survey? \textbf{The 2010 tract boundaries are used.} [(Source)](http://www.census.gov/geo/maps-data/data/pdfs/tiger/How_do_I_choose_TIGER_vintage.pdf)
 

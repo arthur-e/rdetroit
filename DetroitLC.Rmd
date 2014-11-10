@@ -85,7 +85,7 @@ sudo -u arthur psql -d rdetroit -c "CREATE TABLE census_crosswalk (trtid00 chara
 sudo -u arthur psql -d rdetroit -c "COPY census_crosswalk (trtid00, trtid10, weight, placefp10, cbsa10, metdiv10, ccflag10, changetype) FROM '/home/arthur/Downloads/crosswalk_2000_2010.csv' WITH (FORMAT csv, HEADER)"
 ```
 
-## Naive Census Tract Correspondence
+## Interpolating 2000 Census Tracts to 2010 Census Tracts
 
 ```{r}
 setwd('/home/arthur/Downloads')
@@ -94,21 +94,39 @@ options(stringsAsFactors=FALSE)
 census.vars <- c('SE_T003_001', 'SE_T093_001', 'SE_T155_001', 'SE_T156_001', 'SE_T156_002', 'SE_T004_002', 'SE_T005_002', 'SE_T005_003', 'SE_T014_002', 'SE_T014_005', 'SE_T020_001', 'SE_T020_002', 'SE_T020_003', 'SE_T020_005', 'SE_T020_006', 'SE_T020_008', 'SE_T020_009', 'SE_T025_001', 'SE_T185_004')
 acs.vars <- c('SE_T002_001', 'SE_T001_001', 'SE_T004_002', 'SE_T004_003', 'SE_T002_003', 'SE_T057_001', 'SE_T093_001', 'SE_T094_001', 'SE_T094_002', 'SE_T017_001', 'SE_T017_002', 'SE_T017_003', 'SE_T017_005', 'SE_T017_006', 'SE_T017_008', 'SE_T017_009', 'SE_T013_002', 'SE_T013_003', 'SE_T013_005', 'SE_T118_004')
 
-census2000 <- read.csv('census2000.csv', header=T, skip=1) # 2000 Census data
-acs2006.2010 <- read.csv('acs2006-2010.csv', header=T, skip=1) # 2006-2010 ACS data
+census2000 <- read.csv('census2000.csv', header=T, skip=1,
+                       colClasses=c('Geo_FIPS'='character')) # 2000 Census data
+acs2006.2010 <- read.csv('acs2006-2010.csv', header=T, skip=1,
+                       colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
 tracts <- union(census2000$Census.Tract, acs2006.2010$Census.Tract)
 xwalk <- arrange(read.csv('crosswalk_2000_2010.csv', colClasses=c('character', 'character')),
                  trtid10) # 2000 to 2010 Crosswalk data
+xwalk <- within(xwalk, weight <- as.numeric(weight))
 
 require(plyr)
-census2000 <- subset(mutate(census2000, trtid=paste0(Geo_STATE, Geo_COUNTY, Geo_TRACT)),
-                     select=census.vars)
-acs2006.2010 <- subset(mutate(acs2006.2010, trtid=paste0(Geo_STATE, Geo_COUNTY, Geo_TRACT)),
-                       select=census.vars)
+census2000 <- subset(mutate(census2000, trtid00=Geo_FIPS), select=c('trtid00', census.vars))
+acs2006.2010 <- subset(acs2006.2010, select=c('Geo_FIPS', acs.vars))
 
 # Subset the crosswalk table to just those tracts in our census data
-xwalk <- subset(xwalk, trtid00 %in% intersect(census2000$trtid, xwalk$trtid00),
+xwalk <- subset(xwalk, trtid00 %in% intersect(census2000$trtid00, xwalk$trtid00),
                 select=c(trtid00, trtid10, weight))
+
+# We interpolate the 2000 census tracts to 2010 census tracts by a weighted linear combination
+require(reshape2)
+temp <- melt(join(xwalk, census2000, by=c('trtid00')),
+            id.vars=c('trtid00', 'trtid10', 'weight'))
+temp <- within(temp, value <- value * weight) # Scale the census measures by Brown et al.'s weights
+
+# Recast 2010 census tracts as a sum of the 2000 census measures
+census2000.as.2010 <- within(dcast(temp, trtid10 ~ variable, fun.aggregate=sum, value.var='value'),
+                             Geo_FIPS <- trtid10)
+
+# For some reason, a couple of tracts in the ACS are not in the 2010 interpolation of the 2000 census
+disjoint.tracts <- union(setdiff(census2000.as.2010$Geo_FIPS, acs2006.2010$Geo_FIPS),
+                         setdiff(acs2006.2010$Geo_FIPS, census2000.as.2010$Geo_FIPS))
+
+acs2006.2010 <- subset(acs2006.2010, !Geo_FIPS %in% disjoint.tracts)
+census2000.as.2010 <- subset(census2000.as.2010, !Geo_FIPS %in% disjoint.tracts)
 ```
 
 ## Land Cover Data Preparation

@@ -9,6 +9,13 @@ output: pdf_document
 
 All dollar values were adjusted for inflation to 2010 values.
 
+**Used in analysis:**
+* [2000 and 2010 Census tract boundaries](http://semcog.org/MapCatalog_Demographic.aspx) - SEMCOG
+
+**Alternatives:** 
+* [2000 Census tract boundaries](http://www.mcgi.state.mi.us/mgdl/?rel=thext&action=thmname&cid=16&cat=2000+Tracts+from+MI+Geographic+Framework+%28v14a%29)
+* [2010 Census tract boundaries](http://www.mcgi.state.mi.us/mgdl/?rel=thext&action=thmname&cid=16&cat=2010+Tracts+from+MI+Geographic+Framework+%28v14a%29) (Used for 2006 ACS as well)
+
 ## Potential SocialExplorer Census Measures
 
 Variable names are given in parentheses as (2000 Census, American Community Survey).
@@ -151,6 +158,23 @@ census2000.as.2010 <- transform(census2000.as.2010,
   SE_T014_003=SE_T014_003 / SE_T025_001, # Black population...total pop.
   SE_T014_005=SE_T014_005 / SE_T025_001, # Asian population...total pop.
   SE_T185_004=SE_T185_004 / SE_T025_001) # Population poor or struggling...total pop.
+acs2006.2010 <- transform(acs2006.2010,
+  SE_T094_001=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
+  SE_T094_002=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
+  SE_T093_001=SE_T093_001 / SE_T002_003, # Housing unit count normalized by land area
+  SE_T017_001=SE_T017_001 / SE_T002_003, # Households...by land area
+  SE_T017_002=SE_T017_002 / SE_T002_003, # Family households...by land area
+  SE_T017_003=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
+  SE_T017_005=SE_T017_005 / SE_T002_003, # Family households with lone male householder...by land area
+  SE_T017_006=SE_T017_006 / SE_T002_003, # Family households with lone female householder...land area
+  SE_T017_008=SE_T017_008 / SE_T002_003, # Non-family households with male householder...by land area
+  SE_T017_009=SE_T017_009 / SE_T002_003, # Non-family households with female householder...land area
+  SE_T004_002=SE_T004_002 / SE_T001_001, # Male population normalized by total population
+  SE_T004_003=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
+  SE_T013_002=SE_T013_002 / SE_T001_001, # White population...total pop.
+  SE_T013_003=SE_T013_003 / SE_T001_001, # Black population...total pop.
+  SE_T013_005=SE_T013_005 / SE_T001_001, # Asian population...total pop.
+  SE_T118_004=SE_T118_004 / SE_T001_001) # Population poor or struggling...total pop.
 ```
 
 ## Land Cover Data Preparation

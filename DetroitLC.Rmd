@@ -76,6 +76,8 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 1. Interpolate 2000 Census data to 2010 Census tract boundaries.
 2. Normalize 2000 Census and ACS 2006 measures.
 3. Join census tract attributes to census tract boundaries.
+  * Rename variables dropping "SE_"
+  * Rename Shapefile to shorter...
 4. [For SEMCOG data... Create common grid of SEMCOG layers.]
 5. Rasterize census tracts to NLCD grid.
 6. Set up Bayesian network.
@@ -141,40 +143,60 @@ census2000.as.2010 <- subset(census2000.as.2010, !Geo_FIPS %in% disjoint.tracts)
 
 ```{r}
 # Non-iterative normalization; normalizing constants are not updated
-census2000.as.2010 <- transform(census2000.as.2010,
-  SE_T156_001=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
-  SE_T156_002=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
-  SE_T155_001=SE_T155_001 / SE_T004_002, # Housing unit count normalized by land area
-  SE_T020_001=SE_T020_001 / SE_T004_002, # Households...by land area
-  SE_T020_002=SE_T020_002 / SE_T004_002, # Family households...by land area
-  SE_T020_003=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
-  SE_T020_005=SE_T020_005 / SE_T004_002, # Family households with lone male householder...by land area
-  SE_T020_006=SE_T020_006 / SE_T004_002, # Family households with lone female householder...land area
-  SE_T020_008=SE_T020_008 / SE_T004_002, # Non-family households with male householder...by land area
-  SE_T020_009=SE_T020_009 / SE_T004_002, # Non-family households with female householder...land area
-  SE_T005_002=SE_T005_002 / SE_T025_001, # Male population normalized by total population
-  SE_T005_003=SE_T005_003 / SE_T025_001, # Female population normalized by total pop.
-  SE_T014_002=SE_T014_002 / SE_T025_001, # White population...total pop.
-  SE_T014_003=SE_T014_003 / SE_T025_001, # Black population...total pop.
-  SE_T014_005=SE_T014_005 / SE_T025_001, # Asian population...total pop.
-  SE_T185_004=SE_T185_004 / SE_T025_001) # Population poor or struggling...total pop.
-acs2006.2010 <- transform(acs2006.2010,
-  SE_T094_001=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
-  SE_T094_002=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
-  SE_T093_001=SE_T093_001 / SE_T002_003, # Housing unit count normalized by land area
-  SE_T017_001=SE_T017_001 / SE_T002_003, # Households...by land area
-  SE_T017_002=SE_T017_002 / SE_T002_003, # Family households...by land area
-  SE_T017_003=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
-  SE_T017_005=SE_T017_005 / SE_T002_003, # Family households with lone male householder...by land area
-  SE_T017_006=SE_T017_006 / SE_T002_003, # Family households with lone female householder...land area
-  SE_T017_008=SE_T017_008 / SE_T002_003, # Non-family households with male householder...by land area
-  SE_T017_009=SE_T017_009 / SE_T002_003, # Non-family households with female householder...land area
-  SE_T004_002=SE_T004_002 / SE_T001_001, # Male population normalized by total population
-  SE_T004_003=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
-  SE_T013_002=SE_T013_002 / SE_T001_001, # White population...total pop.
-  SE_T013_003=SE_T013_003 / SE_T001_001, # Black population...total pop.
-  SE_T013_005=SE_T013_005 / SE_T001_001, # Asian population...total pop.
-  SE_T118_004=SE_T118_004 / SE_T001_001) # Population poor or struggling...total pop.
+survey2000 <- with(census2000.as.2010, data.frame(
+  FIPS=Geo_FIPS,
+  T003_001=SE_T003_001,
+  T093_001=SE_T093_001,
+  T156_001=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
+  T156_002=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
+  T155_001=SE_T155_001 / SE_T004_002, # Housing unit count normalized by land area
+  T020_001=SE_T020_001 / SE_T004_002, # Households...by land area
+  T020_002=SE_T020_002 / SE_T004_002, # Family households...by land area
+  T020_003=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
+  T020_005=SE_T020_005 / SE_T004_002, # Family households with lone male householder...by land area
+  T020_006=SE_T020_006 / SE_T004_002, # Family households with lone female householder...land area
+  T020_008=SE_T020_008 / SE_T004_002, # Non-family households with male householder...by land area
+  T020_009=SE_T020_009 / SE_T004_002, # Non-family households with female householder...land area
+  T005_002=SE_T005_002 / SE_T025_001, # Male population normalized by total population
+  T005_003=SE_T005_003 / SE_T025_001, # Female population normalized by total pop.
+  T014_002=SE_T014_002 / SE_T025_001, # White population...total pop.
+  T014_003=SE_T014_003 / SE_T025_001, # Black population...total pop.
+  T014_005=SE_T014_005 / SE_T025_001, # Asian population...total pop.
+  T185_004=SE_T185_004 / SE_T025_001)) # Population poor or struggling...total pop.
+survey2006 <- with(acs2006.2010, data.frame(
+  FIPS=Geo_FIPS,
+  T002_001=SE_T002_001,
+  T057_001=SE_T057_001,
+  T094_001=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
+  T094_002=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
+  T093_001=SE_T093_001 / SE_T002_003, # Housing unit count normalized by land area
+  T017_001=SE_T017_001 / SE_T002_003, # Households...by land area
+  T017_002=SE_T017_002 / SE_T002_003, # Family households...by land area
+  T017_003=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
+  T017_005=SE_T017_005 / SE_T002_003, # Family households with lone male householder...by land area
+  T017_006=SE_T017_006 / SE_T002_003, # Family households with lone female householder...land area
+  T017_008=SE_T017_008 / SE_T002_003, # Non-family households with male householder...by land area
+  T017_009=SE_T017_009 / SE_T002_003, # Non-family households with female householder...land area
+  T004_002=SE_T004_002 / SE_T001_001, # Male population normalized by total population
+  T004_003=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
+  T013_002=SE_T013_002 / SE_T001_001, # White population...total pop.
+  T013_003=SE_T013_003 / SE_T001_001, # Black population...total pop.
+  T013_005=SE_T013_005 / SE_T001_001, # Asian population...total pop.
+  T118_004=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
+```
+
+## Joining Spatial and Attribute Data
+
+We write terse filenames because `ogr2ogr` uses the filename as a prefix for field names and with Shapefiles we're limited to 10-character field names.
+
+```{r}
+write.csv(survey2006, file='/usr/local/dev/rdetroit/csv/t.csv', row.names=FALSE)
+write.csv(survey2000, file='/usr/local/dev/rdetroit/csv/w.csv', row.names=FALSE)
+```
+
+```
+# Spatially join census tract boundaries with census measures
+ogr2ogr -sql "SELECT t10.GEOID10 AS GEOID, t.* FROM t10 LEFT JOIN '/usr/local/dev/rdetroit/csv/t.csv'.t ON t10.GEOID10 = t.FIPS" /usr/local/dev/rdetroit/shp/tracts2010_joined.shp /usr/local/dev/rdetroit/shp/t10.shp
 ```
 
 ## Land Cover Data Preparation

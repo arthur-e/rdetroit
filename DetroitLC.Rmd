@@ -75,7 +75,7 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 
 1. Interpolate 2000 Census data to 2010 Census tract boundaries.
 2. Normalize 2000 Census and ACS 2006 measures.
-3. Spatially join census tract attributes to census tract boundaries.
+3. Join census tract attributes to census tract boundaries.
 4. [For SEMCOG data... Create common grid of SEMCOG layers.]
 5. Rasterize census tracts to NLCD grid.
 6. Set up Bayesian network.

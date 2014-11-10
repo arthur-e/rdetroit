@@ -2,3 +2,4 @@ syntax: glob
 *~
 *.html
 *.pdf
+shp/*

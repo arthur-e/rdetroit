@@ -44,7 +44,7 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
   * Male population (`SE_T005_002`, `SE_T004_002`)
   * Female population (`SE_T005_003`, `SE_T004_003`)
   * White population (`SE_T014_002`, `SE_T013_002`)
-  * Black or African American population (`SE_T014_002`, `SE_T013_003`)
+  * Black or African American population (`SE_T014_003`, `SE_T013_003`)
   * Asian population (`SE_T014_005`, `SE_T013_005`)
   * Population in group quarters (`SE_T025_016`, (None))
   * Population 16 years and over (`SE_T069_001`, (None))
@@ -66,12 +66,13 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 
 # Methodology
 
-1. Prep census data with "naive" approach; using only corresponding census tracts (to bypass tedious crosswalking for now).
-2. Spatially join census tract attributes to census tract boundaries.
-3. [For SEMCOG data... Create common grid of SEMCOG layers.]
-4. Rasterize census tracts to NLCD grid.
-5. Set up Bayesian network.
-6. Learn Bayesian network on 2001 NLCD up to 2006 NLCD.
+1. Interpolate 2000 Census data to 2010 Census tract boundaries.
+2. Normalize 2000 Census and ACS 2006 measures.
+3. Spatially join census tract attributes to census tract boundaries.
+4. [For SEMCOG data... Create common grid of SEMCOG layers.]
+5. Rasterize census tracts to NLCD grid.
+6. Set up Bayesian network.
+7. Learn Bayesian network on 2001 NLCD up to 2006 NLCD.
 
 ## Cross-Walking Census Data
 
@@ -91,7 +92,7 @@ sudo -u arthur psql -d rdetroit -c "COPY census_crosswalk (trtid00, trtid10, wei
 setwd('/home/arthur/Downloads')
 options(stringsAsFactors=FALSE)
 
-census.vars <- c('SE_T003_001', 'SE_T093_001', 'SE_T155_001', 'SE_T156_001', 'SE_T156_002', 'SE_T004_002', 'SE_T005_002', 'SE_T005_003', 'SE_T014_002', 'SE_T014_005', 'SE_T020_001', 'SE_T020_002', 'SE_T020_003', 'SE_T020_005', 'SE_T020_006', 'SE_T020_008', 'SE_T020_009', 'SE_T025_001', 'SE_T185_004')
+census.vars <- c('SE_T003_001', 'SE_T093_001', 'SE_T155_001', 'SE_T156_001', 'SE_T156_002', 'SE_T004_002', 'SE_T005_002', 'SE_T005_003', 'SE_T014_002', 'SE_T014_003', 'SE_T014_005', 'SE_T020_001', 'SE_T020_002', 'SE_T020_003', 'SE_T020_005', 'SE_T020_006', 'SE_T020_008', 'SE_T020_009', 'SE_T025_001', 'SE_T185_004')
 acs.vars <- c('SE_T002_001', 'SE_T001_001', 'SE_T004_002', 'SE_T004_003', 'SE_T002_003', 'SE_T057_001', 'SE_T093_001', 'SE_T094_001', 'SE_T094_002', 'SE_T017_001', 'SE_T017_002', 'SE_T017_003', 'SE_T017_005', 'SE_T017_006', 'SE_T017_008', 'SE_T017_009', 'SE_T013_002', 'SE_T013_003', 'SE_T013_005', 'SE_T118_004')
 
 census2000 <- read.csv('census2000.csv', header=T, skip=1,
@@ -127,6 +128,29 @@ disjoint.tracts <- union(setdiff(census2000.as.2010$Geo_FIPS, acs2006.2010$Geo_F
 
 acs2006.2010 <- subset(acs2006.2010, !Geo_FIPS %in% disjoint.tracts)
 census2000.as.2010 <- subset(census2000.as.2010, !Geo_FIPS %in% disjoint.tracts)
+```
+
+## Normalizing Census Data
+
+```{r}
+# Non-iterative normalization; normalizing constants are not updated
+census2000.as.2010 <- transform(census2000.as.2010,
+  SE_T156_001=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
+  SE_T156_002=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
+  SE_T155_001=SE_T155_001 / SE_T004_002, # Housing unit count normalized by land area
+  SE_T020_001=SE_T020_001 / SE_T004_002, # Households...by land area
+  SE_T020_002=SE_T020_002 / SE_T004_002, # Family households...by land area
+  SE_T020_003=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
+  SE_T020_005=SE_T020_005 / SE_T004_002, # Family households with lone male householder...by land area
+  SE_T020_006=SE_T020_006 / SE_T004_002, # Family households with lone female householder...land area
+  SE_T020_008=SE_T020_008 / SE_T004_002, # Non-family households with male householder...by land area
+  SE_T020_009=SE_T020_009 / SE_T004_002, # Non-family households with female householder...land area
+  SE_T005_002=SE_T005_002 / SE_T025_001, # Male population normalized by total population
+  SE_T005_003=SE_T005_003 / SE_T025_001, # Female population normalized by total pop.
+  SE_T014_002=SE_T014_002 / SE_T025_001, # White population...total pop.
+  SE_T014_003=SE_T014_003 / SE_T025_001, # Black population...total pop.
+  SE_T014_005=SE_T014_005 / SE_T025_001, # Asian population...total pop.
+  SE_T185_004=SE_T185_004 / SE_T025_001) # Population poor or struggling...total pop.
 ```
 
 ## Land Cover Data Preparation

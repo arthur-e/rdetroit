@@ -76,24 +76,22 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 1. Interpolate 2000 Census data to 2010 Census tract boundaries.
 2. Normalize 2000 Census and ACS 2006 measures.
 3. Join census tract attributes to census tract boundaries.
-  * Rename variables dropping "SE_"
-  * Rename Shapefile to shorter...
 4. [For SEMCOG data... Create common grid of SEMCOG layers.]
 5. Rasterize census tracts to NLCD grid.
-6. Set up Bayesian network.
-7. Learn Bayesian network on 2001 NLCD up to 2006 NLCD.
+6. Configure the Bayesian network's nodes; include land use drivers and future land use states (classes).
+7. Learn the Bayesian network structure on 2001 NLCD up to 2006 NLCD.
+
+## Dependencies
+
+```{r installation, eval=FALSE}
+install.packages(c('bnlearn', 'reshape2', 'plyr', 'ggplot2', 'sp', 'raster', 'rgdal'))
+```
 
 ## Cross-Walking Census Data
 
 From [U.S. 2010: Discover America in a New Century](http://www.s4.brown.edu/us2010/Researcher/ltdb3.htm): "The crosswalk identifies what portion of a tract in one year should be allocated to a 2010 tract. For every decennial year from 1970 to 2000, every row in the crosswalk lists a 2010 tract ID, the ID of a tract in the source year that contributes to it, and the share of the source tract's population attributes that should be allocated to the 2010 tract. In cases where there is an exact correspondence between the source tract and the 2010 tract, there is only one row of data for the 2010 tract. Otherwise there are as many rows as there are contributing tracts."
 
 Reference to use is: "John R. Logan, Zengwang Xu, and Brian Stults. 2012. “Interpolating US Decennial Census Tract Data from as Early as 1970 to 2010: A Longitudinal Tract Database” Professional Geographer, forthcoming."
-
-```
-chmod 664 crosswalk_2000_2010.csv
-sudo -u arthur psql -d rdetroit -c "CREATE TABLE census_crosswalk (trtid00 character varying(255), trtid10 character varying(255), weight numeric, placefp10 integer, cbsa10 integer, metdiv10 integer, ccflag10 integer, changetype integer)"
-sudo -u arthur psql -d rdetroit -c "COPY census_crosswalk (trtid00, trtid10, weight, placefp10, cbsa10, metdiv10, ccflag10, changetype) FROM '/home/arthur/Downloads/crosswalk_2000_2010.csv' WITH (FORMAT csv, HEADER)"
-```
 
 ## Interpolating 2000 Census Tracts to 2010 Census Tracts
 
@@ -196,7 +194,8 @@ write.csv(survey2000, file='/usr/local/dev/rdetroit/csv/w.csv', row.names=FALSE)
 
 ```
 # Spatially join census tract boundaries with census measures
-ogr2ogr -sql "SELECT t10.GEOID10 AS GEOID, t.* FROM t10 LEFT JOIN '/usr/local/dev/rdetroit/csv/t.csv'.t ON t10.GEOID10 = t.FIPS" /usr/local/dev/rdetroit/shp/tracts2010_joined.shp /usr/local/dev/rdetroit/shp/t10.shp
+ogr2ogr -sql "SELECT t10.GEOID10 AS GEOID, w.* FROM t10 LEFT JOIN '/usr/local/dev/rdetroit/csv/w.csv'.w ON t10.GEOID10 = w.FIPS" /usr/local/dev/rdetroit/shp/tracts2000.shp /usr/local/dev/rdetroit/shp/t10.shp
+ogr2ogr -sql "SELECT t10.GEOID10 AS GEOID, t.* FROM t10 LEFT JOIN '/usr/local/dev/rdetroit/csv/t.csv'.t ON t10.GEOID10 = t.FIPS" /usr/local/dev/rdetroit/shp/tracts2006.shp /usr/local/dev/rdetroit/shp/t10.shp
 ```
 
 ## Land Cover Data Preparation
@@ -225,7 +224,15 @@ reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
 dev <- reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed on right
 ```
 
+## Configuring and Learning on the Bayesian Network
+
+The conditional probability table (CPT) will be populated through learning by maximum likelihood estimation (MLE) after Kocabas and Dragicevic (2007).
+
 # Questions
 
 * What census tract boundaries are used in the American Community Survey? \textbf{The 2010 tract boundaries are used.} [(Source)](http://www.census.gov/geo/maps-data/data/pdfs/tiger/How_do_I_choose_TIGER_vintage.pdf)
+
+# References
+
+
 

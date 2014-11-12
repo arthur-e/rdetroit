@@ -192,21 +192,23 @@ write.csv(survey2006, file='/usr/local/dev/rdetroit/csv/t.csv', row.names=FALSE)
 write.csv(survey2000, file='/usr/local/dev/rdetroit/csv/w.csv', row.names=FALSE)
 ```
 
-```
-# Spatially join census tract boundaries with census measures
-ogr2ogr -sql "SELECT t10.GEOID10 AS GEOID, w.* FROM t10 LEFT JOIN '/usr/local/dev/rdetroit/csv/w.csv'.w ON t10.GEOID10 = w.FIPS" /usr/local/dev/rdetroit/shp/tracts2000.shp /usr/local/dev/rdetroit/shp/t10.shp
-ogr2ogr -sql "SELECT t10.GEOID10 AS GEOID, t.* FROM t10 LEFT JOIN '/usr/local/dev/rdetroit/csv/t.csv'.t ON t10.GEOID10 = t.FIPS" /usr/local/dev/rdetroit/shp/tracts2006.shp /usr/local/dev/rdetroit/shp/t10.shp
+```{r}
+# Join census tract shapefiles and census measures
+tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10.shp', 't10')
+tracts$FIPS <- tracts$GEOID10
+
+require(plyr)
+t2000 <- merge(tracts, survey2000, by='FIPS')
+t2006 <- merge(tracts, survey2006, by='FIPS')
 ```
 
 ## Land Cover Data Preparation
 
 ```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
-library(sp)
-library(raster)
-library(rgdal)
+library(sp, raster, rgdal)
 ```
 
-```{r data.management}
+```{r data.management, message=FALSE}
 file.loc <- '/home/arthur/Workspace/TermProject/'
 rast <- raster::raster(paste0(file.loc, 'nlcd2001_sample.tif'))
 ```
@@ -221,7 +223,24 @@ knitr::kable(data.frame('Input Class Range'=c('[0-10]', '11 (Open Water)', '[12-
 reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                            c(20,23,1), c(23,24,2), c(24,99,0)),
                          byrow=TRUE, ncol=3)
-dev <- reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed on right
+dev <- raster::reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed on right
+```
+
+## Spatial Join of Census Measures and Land Cover Data
+
+```{r}
+library(sp, raster, rgdal)
+attr2000 <- readOGR('/usr/local/dev/rdetroit/shp/tracts2000.shp', 'tracts2000')
+attr2006 <- readOGR('/usr/local/dev/rdetroit/shp/tracts2006.shp', 'tracts2006')
+
+# Match the projection of the land cover layer
+attr2000 <- spTransform(attr2000, raster::crs(dev))
+attr2006 <- spTransform(attr2006, raster::crs(dev))
+
+# We'll rasterize just on the tract IDs so we can join any/all attribute(s) to it later
+devp <- raster::rasterToPoints(dev, spatial=TRUE)
+cover2000 <- sp::over(devp, attr2000)
+c2000e <- raster::extract(dev, attr2000)
 ```
 
 ## Configuring and Learning on the Bayesian Network

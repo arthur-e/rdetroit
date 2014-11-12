@@ -13,7 +13,7 @@ census2000 <- read.csv('census2000.csv', header=T, skip=1,
 acs2006.2010 <- read.csv('acs2006-2010.csv', header=T, skip=1,
                          colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
 tracts <- union(census2000$Census.Tract, acs2006.2010$Census.Tract)
-xwalk <- arrange(read.csv('crosswalk_2000_2010.csv', colClasses=c('character', 'character')),
+xwalk <- plyr::arrange(read.csv('crosswalk_2000_2010.csv', colClasses=c('character', 'character')),
                  trtid10) # 2000 to 2010 Crosswalk data
 xwalk <- within(xwalk, weight <- as.numeric(weight))
 
@@ -133,8 +133,13 @@ cover2006 <- cbind(data.frame(cover=devp$layer), t2006)
 # ===================================
 # Training the Bayesian Network (BN)
 
+# Too many parameters makes for slow learning; to begin with, let's just try estimating cover from population density and median household income
+
 require(bnlearn)
-pdag2000 = iamb(cover2000[,!(names(cover2000) %in% c('FIPS'))])
-pdag2006 = iamb(cover2006[,!(names(cover2006) %in% c('FIPS'))])
+# Start the clock!
+ptm <- proc.time()
+pdag2000 = bnlearn::fast.iamb(cover2000[,(names(cover2000) %in% c('cover', 'T003_001', 'T093_001'))])
+# Stop the clock
+elapsed <- proc.time() - ptm; elapsed
 
 

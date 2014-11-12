@@ -260,6 +260,33 @@ cover2006$cover <- factor(cover2006$cover, labels=c('undeveloped', 'low-developm
 
 The conditional probability table (CPT) will be populated through learning by maximum likelihood estimation (MLE) after Kocabas and Dragicevic (2007).
 
+### Timing
+
+We'll initially time the learning as we expect it to take a long time. For Incremental Association Markov Blanket (IAMB), Scutari (2014) estimates it will execute in $O(N^2)$ time or, "in the worst case," $(O(N^4)$ time.
+
+```{r}
+require(bnlearn)
+# Start the clock!
+ptm <- proc.time()
+pdag2000 <- bnlearn::iamb(cover2000[,(names(cover2000) %in% c('cover', 'T003_001', 'T093_001'))])
+elapsed <- proc.time() - ptm; elapsed # Stop the clock
+```
+
+```{r}
+require(bnlearn)
+# Start the clock!
+ptm <- proc.time()
+pdag2000 <- bnlearn::fast.iamb(cover2000[,(names(cover2000) %in% c('cover', 'T003_001', 'T093_001',
+                                                              'T155_001', 'T156_001'))])
+elapsed <- proc.time() - ptm; elapsed # Stop the clock
+```
+
+```{r}
+l.params <- c(3, 3, 3, 5, 5, 5)
+l.fast.iamb <- c(0.018, 0.020, 0.018, 0.129, 0.117, 0.113)
+l.iamb <- c(0.015, 0.017, 0.013, 0.115, 0.121, 0.117)
+```
+
 # Questions
 
 * Can I do network learning in parallel with the `parallel` package and `makeCluster` (see Page 4, http://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf)?
@@ -268,6 +295,6 @@ The conditional probability table (CPT) will be populated through learning by ma
 
 # References
 
-
+1. Scutari, M. (2014). bnlearn R Package Documentation. Retrieved November 12, 2014, from http://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf
 
 

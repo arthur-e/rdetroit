@@ -237,19 +237,23 @@ dev2 <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[
 ```{r}
 library(sp, raster, rgdal)
 # Match the projection of the land cover layer
-attr2000 <- spTransform(t2000, raster::crs(dev2))
-attr2006 <- spTransform(t2006, raster::crs(dev2))
+attr2000 <- spTransform(attr2000, raster::crs(dev2))
+attr2006 <- spTransform(attr2006, raster::crs(dev2))
 
 # "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
 devp <- raster::rasterToPoints(dev2, spatial=TRUE)
-t2000 <- sp::over(devp, t2000)
-t2006 <- sp::over(devp, t2006)
+t2000 <- sp::over(devp, attr2000)
+t2006 <- sp::over(devp, attr2006)
 
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
 # (Naive, but R leaves us with no choice)
 require(plyr)
 cover2000 <- cbind(data.frame(cover=devp$layer), t2000)
 cover2006 <- cbind(data.frame(cover=devp$layer), t2006)
+
+# Add class labels
+cover2000$cover <- factor(cover2000$cover, labels=c('undeveloped', 'low-development', 'high-development'))
+cover2006$cover <- factor(cover2006$cover, labels=c('undeveloped', 'low-development', 'high-development'))
 ```
 
 ## Configuring and Learning on the Bayesian Network
@@ -258,9 +262,12 @@ The conditional probability table (CPT) will be populated through learning by ma
 
 # Questions
 
+* Can I do network learning in parallel with the `parallel` package and `makeCluster` (see Page 4, http://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf)?
+* What network learning algorithm is most efficient and produces the best results (or is the best trade-off between speed and accuracy)?
 * What census tract boundaries are used in the American Community Survey? \textbf{The 2010 tract boundaries are used.} [(Source)](http://www.census.gov/geo/maps-data/data/pdfs/tiger/How_do_I_choose_TIGER_vintage.pdf)
 
 # References
+
 
 
 

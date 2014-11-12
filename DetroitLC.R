@@ -1,4 +1,4 @@
-library(sp, raster, rgdal, plyr, reshape2)
+library(sp, raster, rgdal, plyr, reshape2, bnlearn)
 
 setwd('/home/arthur/Downloads')
 options(stringsAsFactors=FALSE)
@@ -116,17 +116,25 @@ dev2 <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[
                                          ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25))
 
 # Match the projection of the land cover layer
-attr2000 <- spTransform(t2000, raster::crs(dev2))
-attr2006 <- spTransform(t2006, raster::crs(dev2))
+attr2000 <- spTransform(attr2000, raster::crs(dev2))
+attr2006 <- spTransform(attr2006, raster::crs(dev2))
 
 # "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
 devp <- raster::rasterToPoints(dev2, spatial=TRUE)
-t2000 <- sp::over(devp, t2000)
-t2006 <- sp::over(devp, t2006)
+t2000 <- sp::over(devp, attr2000)
+t2006 <- sp::over(devp, attr2006)
 
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
 # (Naive, but R leaves us with no choice)
 require(plyr)
 cover2000 <- cbind(data.frame(cover=devp$layer), t2000)
 cover2006 <- cbind(data.frame(cover=devp$layer), t2006)
+
+# ===================================
+# Training the Bayesian Network (BN)
+
+require(bnlearn)
+pdag2000 = iamb(cover2000[,!(names(cover2000) %in% c('FIPS'))])
+pdag2006 = iamb(cover2006[,!(names(cover2006) %in% c('FIPS'))])
+
 

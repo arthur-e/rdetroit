@@ -1,111 +1,17 @@
----
-title: "Detroit Metro Land Cover Data"
-author: "K. Arthur Endsley"
-date: "Wednesday, November 05, 2014"
-output: pdf_document
----
+library(sp, raster, rgdal, plyr, reshape2)
 
-# Data Sources
-
-All dollar values were adjusted for inflation to 2010 values.
-
-**Used in analysis:**
-* [2000 and 2010 Census tract boundaries](http://semcog.org/MapCatalog_Demographic.aspx) - SEMCOG
-
-**Alternatives:** 
-* [2000 Census tract boundaries](http://www.mcgi.state.mi.us/mgdl/?rel=thext&action=thmname&cid=16&cat=2000+Tracts+from+MI+Geographic+Framework+%28v14a%29)
-* [2010 Census tract boundaries](http://www.mcgi.state.mi.us/mgdl/?rel=thext&action=thmname&cid=16&cat=2010+Tracts+from+MI+Geographic+Framework+%28v14a%29) (Used for 2006 ACS as well)
-
-## Potential SocialExplorer Census Measures
-
-Variable names are given in parentheses as (2000 Census, American Community Survey).
-
-* Population density (`SE_T003_001`, `SE_T002_001`)
-* Median household income (`SE_T093_001`, `SE_T057_001`)
-
-* Normalized by housing unit count (`SE_T155_001`, `SE_T093_001`)...
-  * Occupied housing units (`SE_T156_001`, `SE_T094_001`)
-  * Occupied housing units: owner occupied (`SE_T156_002`, `SE_T094_002`)
-
-* Normalized by land area (`SE_T004_002`, `SE_T002_003`)...
-  * Housing unit count (`SE_T155_001`, `SE_T093_001`)
-  * Households (`SE_T020_001`, `SE_T017_001`)
-  * Family households (`SE_T020_002`, `SE_T017_002`)
-  * Married-couple households (`SE_T020_003`, `SE_T017_003`)
-  * Family households with Male householder, no spouse present (`SE_T020_005`, `SE_T017_005`)
-  * Family households with Female householder, no spouse present (`SE_T020_006`, `SE_T017_006`)
-  * Non-family households with Male householder (`SE_T020_008`, `SE_T017_008`)
-  * Non-family households with Female householder (`SE_T020_009`, `SE_T017_009`)
-  
-* Normalized by family household population (`SE_T025_003`, (None))...
-  * Householders (`SE_T025_004`, (None))
-  * Children in households (`SE_T025_006`, (None))
-  * Grandchildren in households (`SE_T025_007`, (None))
-  * Parents in households (`SE_T025_009`, (None))
-  * Non-relatives in households (`SE_T025_011`, (None))
-  
-* Normalized by non-family household population (`SE_T025_012`, (None))...
-  * Population living alone (`SE_T025_013`, (None))
-  
-* Normalized by total population (`SE_T025_001`, `SE_T001_001`)...
-  * Male population (`SE_T005_002`, `SE_T004_002`)
-  * Female population (`SE_T005_003`, `SE_T004_003`)
-  * White population (`SE_T014_002`, `SE_T013_002`)
-  * Black or African American population (`SE_T014_003`, `SE_T013_003`)
-  * Asian population (`SE_T014_005`, `SE_T013_005`)
-  * Population in group quarters (`SE_T025_016`, (None))
-  * Population 16 years and over (`SE_T069_001`, (None))
-  * Population poor or struggling (`SE_T185_004`, `SE_T118_004`)
-
-* Normalized by population in group quarters (`SE_T025_016`, (None))...
-  * Institutionalized population (`SE_T025_017`, (None))
-  
-* Normalized by population 16 years and over (`SE_T069_001`, (None))...
-  * Population 16 and over in the labor force (`SE_T069_002`, (None))
-  
-* Normalized by population 16 and over in the labor force (`SE_T069_002`, (None))...
-  * Employed civilians in the labor force (`SE_T069_005`, (None))
-
-## U.S. Census
-
-* [Decennial Census overview and 1990, 2000 datasets](http://www.census.gov/prod/www/decennial.html)
-* [Maps and geographic data](http://www.census.gov/geo/maps-data/)
-
-# Methodology
-
-1. Interpolate 2000 Census data to 2010 Census tract boundaries.
-2. Normalize 2000 Census and ACS 2006 measures.
-3. Join census tract attributes to census tract boundaries.
-4. [For SEMCOG data... Create common grid of SEMCOG layers.]
-5. Rasterize census tracts to NLCD grid.
-6. Configure the Bayesian network's nodes; include land use drivers and future land use states (classes).
-7. Learn the Bayesian network structure on 2001 NLCD up to 2006 NLCD.
-
-## Dependencies
-
-```{r installation, eval=FALSE}
-install.packages(c('bnlearn', 'reshape2', 'plyr', 'ggplot2', 'sp', 'raster', 'rgdal'))
-```
-
-## Cross-Walking Census Data
-
-From [U.S. 2010: Discover America in a New Century](http://www.s4.brown.edu/us2010/Researcher/ltdb3.htm): "The crosswalk identifies what portion of a tract in one year should be allocated to a 2010 tract. For every decennial year from 1970 to 2000, every row in the crosswalk lists a 2010 tract ID, the ID of a tract in the source year that contributes to it, and the share of the source tract's population attributes that should be allocated to the 2010 tract. In cases where there is an exact correspondence between the source tract and the 2010 tract, there is only one row of data for the 2010 tract. Otherwise there are as many rows as there are contributing tracts."
-
-Reference to use is: "John R. Logan, Zengwang Xu, and Brian Stults. 2012. “Interpolating US Decennial Census Tract Data from as Early as 1970 to 2010: A Longitudinal Tract Database” Professional Geographer, forthcoming."
-
-## Interpolating 2000 Census Tracts to 2010 Census Tracts
-
-```{r}
 setwd('/home/arthur/Downloads')
 options(stringsAsFactors=FALSE)
 
 census.vars <- c('SE_T003_001', 'SE_T093_001', 'SE_T155_001', 'SE_T156_001', 'SE_T156_002', 'SE_T004_002', 'SE_T005_002', 'SE_T005_003', 'SE_T014_002', 'SE_T014_003', 'SE_T014_005', 'SE_T020_001', 'SE_T020_002', 'SE_T020_003', 'SE_T020_005', 'SE_T020_006', 'SE_T020_008', 'SE_T020_009', 'SE_T025_001', 'SE_T185_004')
 acs.vars <- c('SE_T002_001', 'SE_T001_001', 'SE_T004_002', 'SE_T004_003', 'SE_T002_003', 'SE_T057_001', 'SE_T093_001', 'SE_T094_001', 'SE_T094_002', 'SE_T017_001', 'SE_T017_002', 'SE_T017_003', 'SE_T017_005', 'SE_T017_006', 'SE_T017_008', 'SE_T017_009', 'SE_T013_002', 'SE_T013_003', 'SE_T013_005', 'SE_T118_004')
 
+# =======================================
+# Reading in census and crosswalk tables
 census2000 <- read.csv('census2000.csv', header=T, skip=1,
                        colClasses=c('Geo_FIPS'='character')) # 2000 Census data
 acs2006.2010 <- read.csv('acs2006-2010.csv', header=T, skip=1,
-                       colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
+                         colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
 tracts <- union(census2000$Census.Tract, acs2006.2010$Census.Tract)
 xwalk <- arrange(read.csv('crosswalk_2000_2010.csv', colClasses=c('character', 'character')),
                  trtid10) # 2000 to 2010 Crosswalk data
@@ -122,7 +28,7 @@ xwalk <- subset(xwalk, trtid00 %in% intersect(census2000$trtid00, xwalk$trtid00)
 # We interpolate the 2000 census tracts to 2010 census tracts by a weighted linear combination
 require(reshape2)
 temp <- melt(join(xwalk, census2000, by=c('trtid00')),
-            id.vars=c('trtid00', 'trtid10', 'weight'))
+             id.vars=c('trtid00', 'trtid10', 'weight'))
 temp <- within(temp, value <- value * weight) # Scale the census measures by Brown et al.'s weights
 
 # Recast 2010 census tracts as a sum of the 2000 census measures
@@ -135,12 +41,9 @@ disjoint.tracts <- union(setdiff(census2000.as.2010$Geo_FIPS, acs2006.2010$Geo_F
 
 acs2006.2010 <- subset(acs2006.2010, !Geo_FIPS %in% disjoint.tracts)
 census2000.as.2010 <- subset(census2000.as.2010, !Geo_FIPS %in% disjoint.tracts)
-```
 
-## Normalizing Census Data
-
-```{r}
-# Non-iterative normalization; normalizing constants are not updated
+# ========================
+# Normalizing census data
 survey2000 <- with(census2000.as.2010, data.frame(
   FIPS=Geo_FIPS,
   T003_001=SE_T003_001,
@@ -181,18 +84,14 @@ survey2006 <- with(acs2006.2010, data.frame(
   T013_003=SE_T013_003 / SE_T001_001, # Black population...total pop.
   T013_005=SE_T013_005 / SE_T001_001, # Asian population...total pop.
   T118_004=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
-```
 
-## Joining Spatial and Attribute Data
+# Clean-up
+acs2006.2010 <- NULL
+census2000 <- NULL
+census2000.as.2010 <- NULL
+temp <- NULL
 
-We write terse filenames because `ogr2ogr` uses the filename as a prefix for field names and with Shapefiles we're limited to 10-character field names.
-
-```{r}
-write.csv(survey2006, file='/usr/local/dev/rdetroit/csv/t.csv', row.names=FALSE)
-write.csv(survey2000, file='/usr/local/dev/rdetroit/csv/w.csv', row.names=FALSE)
-```
-
-```{r}
+# =================================================
 # Join census tract shapefiles and census measures
 tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10.shp', 't10')
 tracts$FIPS <- tracts$GEOID10
@@ -201,26 +100,11 @@ tracts <- subset(tracts, select=c('FIPS'))
 require(plyr)
 attr2000 <- merge(tracts, survey2000, by='FIPS')
 attr2006 <- merge(tracts, survey2006, by='FIPS')
-```
 
-## Land Cover Data Preparation
-
-```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
-library(sp, raster, rgdal)
-```
-
-```{r data.management, message=FALSE}
+# ===========================================
+# Get and reclassify sample land cover layer
 file.loc <- '/home/arthur/Workspace/TermProject/'
 rast <- raster::raster(paste0(file.loc, 'nlcd2001_sample.tif'))
-```
-
-Next, I reclassify the NLCD raster into three classes:
-
-```{r reclass.explication, echo=FALSE}
-knitr::kable(data.frame('Input Class Range'=c('[0-10]', '11 (Open Water)', '[12-20]', '[21-23] (Open and Low, Medium Development)', '24 (High Development)', '[25-99]'), 'Output Class'=c(0,NA,0,1,2,0), 'New Class Label'=c('Undeveloped', 'Excluded', 'Undeveloped', 'Low-Intensity Development', 'High-Intensity Development', 'Undeveloped')), col.names=c('Input Class Range', 'Output Class', 'New Class Label'))
-```
-
-```{r reclass}
 reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                            c(20,23,1), c(23,24,2), c(24,99,0)),
                          byrow=TRUE, ncol=3)
@@ -230,12 +114,7 @@ dev <- raster::reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed o
 ext <- bbox(dev)
 dev2 <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
                                          ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25))
-```
 
-## Spatial Join of Census Measures and Land Cover Data
-
-```{r}
-library(sp, raster, rgdal)
 # Match the projection of the land cover layer
 attr2000 <- spTransform(t2000, raster::crs(dev2))
 attr2006 <- spTransform(t2006, raster::crs(dev2))
@@ -250,17 +129,4 @@ t2006 <- sp::over(devp, t2006)
 require(plyr)
 cover2000 <- cbind(data.frame(cover=devp$layer), t2000)
 cover2006 <- cbind(data.frame(cover=devp$layer), t2006)
-```
-
-## Configuring and Learning on the Bayesian Network
-
-The conditional probability table (CPT) will be populated through learning by maximum likelihood estimation (MLE) after Kocabas and Dragicevic (2007).
-
-# Questions
-
-* What census tract boundaries are used in the American Community Survey? \textbf{The 2010 tract boundaries are used.} [(Source)](http://www.census.gov/geo/maps-data/data/pdfs/tiger/How_do_I_choose_TIGER_vintage.pdf)
-
-# References
-
-
 

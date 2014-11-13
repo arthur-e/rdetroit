@@ -272,22 +272,32 @@ pdag2000 <- bnlearn::iamb(cover2000[,(names(cover2000) %in% c('cover', 'T003_001
 elapsed <- proc.time() - ptm; elapsed # Stop the clock
 ```
 
-```{r}
+```{r eval=FALSE}
 require(bnlearn)
-# Start the clock!
-ptm <- proc.time()
-pdag2000 <- bnlearn::fast.iamb(cover2000[,(names(cover2000) %in% c('cover', 'T003_001', 'T093_001',
-                                                              'T155_001', 'T156_001', 'T156_002',
-                                                              'T020_001', 'T020_002', 'T020_003'))])
-elapsed <- proc.time() - ptm; elapsed # Stop the clock
+l.params <- c()
+l.iamb <- c()
+l.fast.iamb <- c()
+vars <- c('cover', 'T003_001', 'T093_001', 'T155_001', 'T156_002', 'T025_013', 'T020_001', 'T020_002', 'T020_003', 'T025_006')
+
+# Timings on a 64-bit Intel® Core™ i7-2600 CPU @ 3.40GHz × 8 with 7.8 GB memory
+for (i in seq(3, length(vars), by=1)) {
+  for (j in c(1,2,3)) {
+    ptm <- proc.time() # Start the clock!
+    pdag2000 <- bnlearn::iamb(cover2000[,(names(cover2000) %in% vars[1:i])])
+    i.elapsed <- proc.time() - ptm # Stop the clock
+    
+    ptm <- proc.time() # Start the clock!
+    pdag2000 <- bnlearn::fast.iamb(cover2000[,(names(cover2000) %in% vars[1:i])])
+    fi.elapsed <- proc.time() - ptm # Stop the clock
+    
+    l.params <- c(l.params, length(vars[1:i]))
+    l.iamb <- c(l.iamb, as.numeric(i.elapsed['elapsed']))
+    l.fast.iamb <- c(l.fast.iamb, as.numeric(fi.elapsed['elapsed']))
+  }
+}
 ```
 
 ```{r}
-# Timings on a 64-bit Intel® Core™ i7-2600 CPU @ 3.40GHz × 8 with 7.8 GB memory
-l.params <- c(3, 3, 3, 5, 5, 5, 7, 7, 7, 9, 9, 9)
-l.fast.iamb <- c(0.018, 0.020, 0.018, 0.129, 0.117, 0.113, 0.719, 0.720, 0.717, 8.374, 8.334, 8.139)
-l.iamb <- c(0.015, 0.017, 0.013, 0.115, 0.121, 0.117, 0.578, 0.659, 0.557, 8.228, 8.151, 8.235)
-
 par(mfrow=c(1,2))
 plot(l.params, l.fast.iamb, log='y', xlab='Number of parameters, N', ylab='log10 Time in seconds')
 title('Fast IAMB Network Learning')
@@ -298,21 +308,22 @@ par(mfrow=c(1,1))
 
 As the curves appear to be straight lines on the log-linear plot, we can assume a function that fits these data takes the form $a + b^x$ where the slope of the curve is given by the base-10 logarithm of $b$.
 
+There are errors when certain variables are combined (possibly due to multicollinearity?). These occur at the highest number of variables tried in combination, $n=9$, and so are removed from subsequent analysis. It is interesting to note that the with the inclusion of $n=9$, the exponential time model fits better than the quadratic (polynomial) time model. Without $n=9$ they both do pretty well. There really isn't enough data to discriminate between them, so we're obliged to go with the quadratic time model as this is supported in the literature.
+
 ```{r}
 require(plyr)
 timings <- data.frame(n=l.params, iamb=l.iamb)
-mean.timings <- dcast(timings, n ~ ., mean, value.var='iamb')
-names(mean.timings) <- c('n', 'time')
-slope <- with(mean.timings, (time[length(time)] - time[1]) / (n[length(n)] - n[1]))
 
 # Try an exponential model of timing
 expmod <- lm(log10(iamb) ~ n, data=timings)
+quadmod <- lm(iamb ~ n + I(n^2), data=timings)
 
 require(ggplot2)
 ggplot() +
   geom_point(timings, mapping=aes(x=n, y=iamb), pch='+', size=7) +
   stat_function(data=data.frame(x=seq(1, 9, by=1)),
-                fun=function (n) { 10^((slope * n) - 9) },
+                fun=function (n) { coef(quadmod)['(Intercept)'] +
+                                     (coef(quadmod)['n'] * n) + (coef(quadmod)['I(n^2)'] * n^2)},
                 lty='dashed') +
   stat_function(data=data.frame(x=seq(1, 9, by=1)),
                 fun=function (n) { 10^(coef(expmod)['(Intercept)'] + coef(expmod)['n'] * n) },
@@ -320,9 +331,13 @@ ggplot() +
   labs(title='Two models for scaling of IAMB time with parameters') +
   xlab('Number of parameters, N') +
   ylab('Time for IAMB (seconds)') +
-  scale_y_log10() +
   theme_bw() +
   theme(text=element_text(size=14))
+```
+
+```{r}
+summary(quadmod)
+summary(expmod)
 ```
 
 # Questions

@@ -50,7 +50,6 @@ survey2000 <- with(census2000.as.2010, data.frame(
   T093_001=SE_T093_001,
   T156_001=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
   T156_002=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
-  T155_001=SE_T155_001 / SE_T004_002, # Housing unit count normalized by land area
   T020_001=SE_T020_001 / SE_T004_002, # Households...by land area
   T020_002=SE_T020_002 / SE_T004_002, # Family households...by land area
   T020_003=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
@@ -70,7 +69,6 @@ survey2006 <- with(acs2006.2010, data.frame(
   T057_001=SE_T057_001,
   T094_001=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
   T094_002=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
-  T093_001=SE_T093_001 / SE_T002_003, # Housing unit count normalized by land area
   T017_001=SE_T017_001 / SE_T002_003, # Households...by land area
   T017_002=SE_T017_002 / SE_T002_003, # Family households...by land area
   T017_003=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
@@ -93,6 +91,7 @@ temp <- NULL
 
 # =================================================
 # Join census tract shapefiles and census measures
+require(rgdal)
 tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10.shp', 't10')
 tracts$FIPS <- tracts$GEOID10
 tracts <- subset(tracts, select=c('FIPS'))
@@ -104,6 +103,8 @@ attr2006 <- merge(tracts, survey2006, by='FIPS')
 # ===========================================
 # Get and reclassify sample land cover layer
 file.loc <- '/home/arthur/Workspace/TermProject/'
+
+require(raster)
 rast <- raster::raster(paste0(file.loc, 'nlcd2001_sample.tif'))
 reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                            c(20,23,1), c(23,24,2), c(24,99,0)),

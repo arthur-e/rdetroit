@@ -76,10 +76,9 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 1. Interpolate 2000 Census data to 2010 Census tract boundaries.
 2. Normalize 2000 Census and ACS 2006 measures.
 3. Join census tract attributes to census tract boundaries.
-4. [For SEMCOG data... Create common grid of SEMCOG layers.]
-5. Rasterize census tracts to NLCD grid.
-6. Configure the Bayesian network's nodes; include land use drivers and future land use states (classes).
-7. Learn the Bayesian network structure on 2001 NLCD up to 2006 NLCD.
+4. Rasterize census tracts to NLCD grid.
+5. Configure the Bayesian network's nodes; include land use drivers and future land use states (classes).
+6. Learn the Bayesian network structure on 2001 NLCD up to 2006 NLCD.
 
 ## Dependencies
 
@@ -107,6 +106,8 @@ census2000 <- read.csv('census2000.csv', header=T, skip=1,
 acs2006.2010 <- read.csv('acs2006-2010.csv', header=T, skip=1,
                        colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
 tracts <- union(census2000$Census.Tract, acs2006.2010$Census.Tract)
+
+require(plyr)
 xwalk <- arrange(read.csv('crosswalk_2000_2010.csv', colClasses=c('character', 'character')),
                  trtid10) # 2000 to 2010 Crosswalk data
 xwalk <- within(xwalk, weight <- as.numeric(weight))
@@ -147,7 +148,6 @@ survey2000 <- with(census2000.as.2010, data.frame(
   T093_001=SE_T093_001,
   T156_001=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
   T156_002=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
-  T155_001=SE_T155_001 / SE_T004_002, # Housing unit count normalized by land area
   T020_001=SE_T020_001 / SE_T004_002, # Households...by land area
   T020_002=SE_T020_002 / SE_T004_002, # Family households...by land area
   T020_003=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
@@ -167,7 +167,6 @@ survey2006 <- with(acs2006.2010, data.frame(
   T057_001=SE_T057_001,
   T094_001=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
   T094_002=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
-  T093_001=SE_T093_001 / SE_T002_003, # Housing unit count normalized by land area
   T017_001=SE_T017_001 / SE_T002_003, # Households...by land area
   T017_002=SE_T017_002 / SE_T002_003, # Family households...by land area
   T017_003=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
@@ -185,15 +184,9 @@ survey2006 <- with(acs2006.2010, data.frame(
 
 ## Joining Spatial and Attribute Data
 
-We write terse filenames because `ogr2ogr` uses the filename as a prefix for field names and with Shapefiles we're limited to 10-character field names.
-
-```{r}
-write.csv(survey2006, file='/usr/local/dev/rdetroit/csv/t.csv', row.names=FALSE)
-write.csv(survey2000, file='/usr/local/dev/rdetroit/csv/w.csv', row.names=FALSE)
-```
-
 ```{r}
 # Join census tract shapefiles and census measures
+require(rgdal)
 tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10.shp', 't10')
 tracts$FIPS <- tracts$GEOID10
 tracts <- subset(tracts, select=c('FIPS'))
@@ -211,6 +204,8 @@ library(sp, raster, rgdal)
 
 ```{r data.management, message=FALSE}
 file.loc <- '/home/arthur/Workspace/TermProject/'
+
+require(raster)
 rast <- raster::raster(paste0(file.loc, 'nlcd2001_sample.tif'))
 ```
 
@@ -221,6 +216,7 @@ knitr::kable(data.frame('Input Class Range'=c('[0-10]', '11 (Open Water)', '[12-
 ```
 
 ```{r reclass}
+require(raster)
 reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                            c(20,23,1), c(23,24,2), c(24,99,0)),
                          byrow=TRUE, ncol=3)
@@ -252,8 +248,10 @@ cover2000 <- cbind(data.frame(cover=devp$layer), t2000)
 cover2006 <- cbind(data.frame(cover=devp$layer), t2006)
 
 # Add class labels
-cover2000$cover <- factor(cover2000$cover, labels=c('undeveloped', 'low-development', 'high-development'))
-cover2006$cover <- factor(cover2006$cover, labels=c('undeveloped', 'low-development', 'high-development'))
+# cover2000$cover <- factor(cover2000$cover,
+#                           labels=c('undeveloped', 'low-development', 'high-development'))
+# cover2006$cover <- factor(cover2006$cover,
+#                           labels=c('undeveloped', 'low-development', 'high-development'))
 ```
 
 ## Configuring and Learning on the Bayesian Network
@@ -263,14 +261,6 @@ The conditional probability table (CPT) will be populated through learning by ma
 ### Timing
 
 We'll initially time the learning as we expect it to take a long time. For Incremental Association Markov Blanket (IAMB), Scutari (2014) estimates it will execute in $O(N^2)$ time or, "in the worst case," $(O(N^4)$ time.
-
-```{r}
-require(bnlearn)
-# Start the clock!
-ptm <- proc.time()
-pdag2000 <- bnlearn::iamb(cover2000[,(names(cover2000) %in% c('cover', 'T003_001', 'T093_001'))])
-elapsed <- proc.time() - ptm; elapsed # Stop the clock
-```
 
 ```{r eval=FALSE}
 require(bnlearn)
@@ -308,8 +298,6 @@ par(mfrow=c(1,1))
 
 As the curves appear to be straight lines on the log-linear plot, we can assume a function that fits these data takes the form $a + b^x$ where the slope of the curve is given by the base-10 logarithm of $b$.
 
-There are errors when certain variables are combined (possibly due to multicollinearity?). These occur at the highest number of variables tried in combination, $n=9$, and so are removed from subsequent analysis. It is interesting to note that the with the inclusion of $n=9$, the exponential time model fits better than the quadratic (polynomial) time model. Without $n=9$ they both do pretty well. There really isn't enough data to discriminate between them, so we're obliged to go with the quadratic time model as this is supported in the literature.
-
 ```{r}
 require(plyr)
 timings <- data.frame(n=l.params, iamb=l.iamb)
@@ -335,9 +323,19 @@ ggplot() +
   theme(text=element_text(size=14))
 ```
 
+The quadratic model fits just slightly better than the exponential model, although this may be just because it has an extra parameter.
+
 ```{r}
 summary(quadmod)
 summary(expmod)
+```
+
+We could use AIC to compare the two models but the difference is small and likely less than the critical difference required to be significant. The AIC for the exponential model is `{r} as.numeric((2 * 3) - 2*log(logLik(expmod)))`; for the quadratic model it is `{r} as.numeric((2 * 4) - 2*log(logLik(quadmod)))`. At the 95% confidence interval, these models are still very close, with the critical value from the chi-squared distribution being `{r} qchisq(p=0.95, df=1)/2` and the actual difference between the models being `{r} as.numeric((2 * 3) - 2*log(logLik(expmod))) - as.numeric((2 * 4) - 2*log(logLik(quadmod)))`.
+
+In summary, there really isn't enough data to discriminate between them, so we're obliged to go with the quadratic time model as this is supported in the literature. The predictions show that we should be able to train a network with up to 20 parameters in under 10 seconds. Thus, any training that takes significantly longer than this amount of time is likely due to errors encountered by the learning algorithm, such as correlated root nodes.
+
+```{r}
+predict(quadmod, data.frame(n=seq(1, length(census.vars), by=1)))
 ```
 
 # Questions

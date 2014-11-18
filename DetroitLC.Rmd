@@ -5,6 +5,8 @@ date: "Wednesday, November 05, 2014"
 output: pdf_document
 ---
 
+The intent is to learn the major drivers of land cover change in the Detroit Metro area from 2001 to 2006 and use the modeled relationships to predict land cover change in 2011.
+
 # Data Sources
 
 All dollar values were adjusted for inflation to 2010 values.
@@ -75,10 +77,19 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 
 1. Interpolate 2000 Census data to 2010 Census tract boundaries.
 2. Normalize 2000 Census and ACS 2006 measures.
+  - Other measures? Distance to roads?
+  - Distance to [recreation and open space?](ftp://ftp.semcog.org/outgoing/web/landuse/regrec.zip)
 3. Join census tract attributes to census tract boundaries.
 4. Rasterize census tracts to NLCD grid.
 5. Configure the Bayesian network's nodes; include land use drivers and future land use states (classes).
-6. Learn the Bayesian network structure on 2001 NLCD up to 2006 NLCD.
+6. Learn the Bayesian network structure.
+  - Intersect 2001 and 2006 land cover observations with the 2001 and 2006 census measures, respectively.
+  - Compare learned network structure across constraint-based, score-based and hybrid structure learning algorithms.
+  - Compare learned network structure for 2001 data (only) and 2006 data (only) using Bayes Information Criterion (`bnlearn::score()`).
+  - Learn network only on changed pixels from 2001 to 2006.
+  - Construct random undirected graph.
+  - Construct expert undirected graph.
+  - Complete graphs by learning on undirected graphs.
 
 ## Dependencies
 
@@ -144,42 +155,42 @@ census2000.as.2010 <- subset(census2000.as.2010, !Geo_FIPS %in% disjoint.tracts)
 # Non-iterative normalization; normalizing constants are not updated
 survey2000 <- with(census2000.as.2010, data.frame(
   FIPS=Geo_FIPS,
-  T003_001=SE_T003_001,
-  T093_001=SE_T093_001,
-  T156_001=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
-  T156_002=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
-  T020_001=SE_T020_001 / SE_T004_002, # Households...by land area
-  T020_002=SE_T020_002 / SE_T004_002, # Family households...by land area
-  T020_003=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
-  T020_005=SE_T020_005 / SE_T004_002, # Family households with lone male householder...by land area
-  T020_006=SE_T020_006 / SE_T004_002, # Family households with lone female householder...land area
-  T020_008=SE_T020_008 / SE_T004_002, # Non-family households with male householder...by land area
-  T020_009=SE_T020_009 / SE_T004_002, # Non-family households with female householder...land area
-  T005_002=SE_T005_002 / SE_T025_001, # Male population normalized by total population
-  T005_003=SE_T005_003 / SE_T025_001, # Female population normalized by total pop.
-  T014_002=SE_T014_002 / SE_T025_001, # White population...total pop.
-  T014_003=SE_T014_003 / SE_T025_001, # Black population...total pop.
-  T014_005=SE_T014_005 / SE_T025_001, # Asian population...total pop.
-  T185_004=SE_T185_004 / SE_T025_001)) # Population poor or struggling...total pop.
+  pop.density=SE_T003_001,
+  med.hhold.income=SE_T093_001,
+  occupied.housing=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
+  owner.occupied=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
+  hholds=SE_T020_001 / SE_T004_002, # Households...by land area
+  fam.hholds=SE_T020_002 / SE_T004_002, # Family households...by land area
+  married.hholds=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
+  lone.male.hholds=SE_T020_005 / SE_T004_002, # Family -holds with lone male householder...by land area
+  lone.female.hholds=SE_T020_006 / SE_T004_002, # Family -holds with lone female householder...land area
+  male.nonfam.hholds=SE_T020_008 / SE_T004_002, # Non-family -holds with male householder...by land area
+  female.nonfam.hholds=SE_T020_009 / SE_T004_002, # Non-family -holds with female householder...land area
+  male.pop=SE_T005_002 / SE_T025_001, # Male population normalized by total population
+  female.pop=SE_T005_003 / SE_T025_001, # Female population normalized by total pop.
+  white.pop=SE_T014_002 / SE_T025_001, # White population...total pop.
+  black.pop=SE_T014_003 / SE_T025_001, # Black population...total pop.
+  asian.pop=SE_T014_005 / SE_T025_001, # Asian population...total pop.
+  poor.pop=SE_T185_004 / SE_T025_001)) # Population poor or struggling...total pop.
 survey2006 <- with(acs2006.2010, data.frame(
   FIPS=Geo_FIPS,
-  T002_001=SE_T002_001,
-  T057_001=SE_T057_001,
-  T094_001=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
-  T094_002=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
-  T017_001=SE_T017_001 / SE_T002_003, # Households...by land area
-  T017_002=SE_T017_002 / SE_T002_003, # Family households...by land area
-  T017_003=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
-  T017_005=SE_T017_005 / SE_T002_003, # Family households with lone male householder...by land area
-  T017_006=SE_T017_006 / SE_T002_003, # Family households with lone female householder...land area
-  T017_008=SE_T017_008 / SE_T002_003, # Non-family households with male householder...by land area
-  T017_009=SE_T017_009 / SE_T002_003, # Non-family households with female householder...land area
-  T004_002=SE_T004_002 / SE_T001_001, # Male population normalized by total population
-  T004_003=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
-  T013_002=SE_T013_002 / SE_T001_001, # White population...total pop.
-  T013_003=SE_T013_003 / SE_T001_001, # Black population...total pop.
-  T013_005=SE_T013_005 / SE_T001_001, # Asian population...total pop.
-  T118_004=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
+  pop.density=SE_T002_001,
+  med.hhold.income=SE_T057_001,
+  occupied.housing=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
+  owner.occupied=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
+  hholds=SE_T017_001 / SE_T002_003, # Households...by land area
+  fam.hholds=SE_T017_002 / SE_T002_003, # Family households...by land area
+  married.hholds=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
+  lone.male.hholds=SE_T017_005 / SE_T002_003, # Family -holds with lone male householder...by land area
+  lone.female.hholds=SE_T017_006 / SE_T002_003, # Family -holds with lone female householder...land area
+  male.nonfam.hholds=SE_T017_008 / SE_T002_003, # Non-family -holds with male householder...by land area
+  female.nonfam.hholds=SE_T017_009 / SE_T002_003, # Non-family -holds with female householder...land area
+  male.pop=SE_T004_002 / SE_T001_001, # Male population normalized by total population
+  female.pop=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
+  white.pop=SE_T013_002 / SE_T001_001, # White population...total pop.
+  black.pop=SE_T013_003 / SE_T001_001, # Black population...total pop.
+  asian.pop=SE_T013_005 / SE_T001_001, # Asian population...total pop.
+  poor.pop=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
 ```
 
 ## Joining Spatial and Attribute Data
@@ -206,7 +217,7 @@ library(sp, raster, rgdal)
 file.loc <- '/home/arthur/Workspace/TermProject/'
 
 require(raster)
-rast <- raster::raster(paste0(file.loc, 'nlcd2001_sample.tif'))
+rast <- raster::raster(paste0(file.loc, 'nlcd2006.tif'))
 ```
 
 Next, I reclassify the NLCD raster into three classes:
@@ -224,8 +235,8 @@ dev <- raster::reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed o
 
 # Create a smaller sample
 ext <- bbox(dev)
-dev2 <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
-                                         ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25))
+dev <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.1,
+                                         ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.1))
 ```
 
 ## Spatial Join of Census Measures and Land Cover Data
@@ -233,22 +244,19 @@ dev2 <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[
 ```{r}
 library(sp, raster, rgdal)
 # Match the projection of the land cover layer
-attr2000 <- spTransform(attr2000, raster::crs(dev2))
-attr2006 <- spTransform(attr2006, raster::crs(dev2))
+attr2000 <- spTransform(attr2000, raster::crs(dev))
 
 # "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
-devp <- raster::rasterToPoints(dev2, spatial=TRUE)
+devp <- raster::rasterToPoints(dev, spatial=TRUE)
 t2000 <- sp::over(devp, attr2000)
-t2006 <- sp::over(devp, attr2006)
 
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
 # (Naive, but R leaves us with no choice)
 require(plyr)
-cover2000 <- cbind(data.frame(cover=devp$layer), t2000)
-cover2006 <- cbind(data.frame(cover=devp$layer), t2006)
+train2000 <- cbind(data.frame(cover=devp$layer), t2000)
 
 # Add class labels
-# cover2000$cover <- factor(cover2000$cover,
+# train2000$cover <- factor(train2000$cover,
 #                           labels=c('undeveloped', 'low-development', 'high-development'))
 # cover2006$cover <- factor(cover2006$cover,
 #                           labels=c('undeveloped', 'low-development', 'high-development'))
@@ -257,6 +265,11 @@ cover2006 <- cbind(data.frame(cover=devp$layer), t2006)
 ## Configuring and Learning on the Bayesian Network
 
 The conditional probability table (CPT) will be populated through learning by maximum likelihood estimation (MLE) after Kocabas and Dragicevic (2007).
+
+```{r}
+vars <- c('cover', 'T003_001', 'T093_001', 'T156_001', 'T156_002', 'T020_002', 'T185_004')
+pdag2000 <- bnlearn::iamb(train2000[,(names(train2000) %in% vars[1:i])])
+```
 
 ### Timing
 
@@ -273,11 +286,11 @@ vars <- c('cover', 'T003_001', 'T093_001', 'T155_001', 'T156_002', 'T025_013', '
 for (i in seq(3, length(vars), by=1)) {
   for (j in c(1,2,3)) {
     ptm <- proc.time() # Start the clock!
-    pdag2000 <- bnlearn::iamb(cover2000[,(names(cover2000) %in% vars[1:i])])
+    pdag2000 <- bnlearn::iamb(train2000[,(names(train2000) %in% vars[1:i])])
     i.elapsed <- proc.time() - ptm # Stop the clock
     
     ptm <- proc.time() # Start the clock!
-    pdag2000 <- bnlearn::fast.iamb(cover2000[,(names(cover2000) %in% vars[1:i])])
+    pdag2000 <- bnlearn::fast.iamb(train2000[,(names(train2000) %in% vars[1:i])])
     fi.elapsed <- proc.time() - ptm # Stop the clock
     
     l.params <- c(l.params, length(vars[1:i]))

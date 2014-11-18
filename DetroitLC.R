@@ -46,48 +46,45 @@ census2000.as.2010 <- subset(census2000.as.2010, !Geo_FIPS %in% disjoint.tracts)
 # Normalizing census data
 survey2000 <- with(census2000.as.2010, data.frame(
   FIPS=Geo_FIPS,
-  T003_001=SE_T003_001,
-  T093_001=SE_T093_001,
-  T156_001=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
-  T156_002=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
-  T020_001=SE_T020_001 / SE_T004_002, # Households...by land area
-  T020_002=SE_T020_002 / SE_T004_002, # Family households...by land area
-  T020_003=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
-  T020_005=SE_T020_005 / SE_T004_002, # Family households with lone male householder...by land area
-  T020_006=SE_T020_006 / SE_T004_002, # Family households with lone female householder...land area
-  T020_008=SE_T020_008 / SE_T004_002, # Non-family households with male householder...by land area
-  T020_009=SE_T020_009 / SE_T004_002, # Non-family households with female householder...land area
-  T005_002=SE_T005_002 / SE_T025_001, # Male population normalized by total population
-  T005_003=SE_T005_003 / SE_T025_001, # Female population normalized by total pop.
-  T014_002=SE_T014_002 / SE_T025_001, # White population...total pop.
-  T014_003=SE_T014_003 / SE_T025_001, # Black population...total pop.
-  T014_005=SE_T014_005 / SE_T025_001, # Asian population...total pop.
-  T185_004=SE_T185_004 / SE_T025_001)) # Population poor or struggling...total pop.
+  pop.density=SE_T003_001,
+  med.hhold.income=SE_T093_001,
+  occupied.housing=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
+  owner.occupied=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
+  hholds=SE_T020_001 / SE_T004_002, # Households...by land area
+  fam.hholds=SE_T020_002 / SE_T004_002, # Family households...by land area
+  married.hholds=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
+  lone.male.hholds=SE_T020_005 / SE_T004_002, # Family -holds with lone male householder...by land area
+  lone.female.hholds=SE_T020_006 / SE_T004_002, # Family -holds with lone female householder...land area
+  male.nonfam.hholds=SE_T020_008 / SE_T004_002, # Non-family -holds with male householder...by land area
+  female.nonfam.hholds=SE_T020_009 / SE_T004_002, # Non-family -holds with female householder...land area
+  male.pop=SE_T005_002 / SE_T025_001, # Male population normalized by total population
+  female.pop=SE_T005_003 / SE_T025_001, # Female population normalized by total pop.
+  white.pop=SE_T014_002 / SE_T025_001, # White population...total pop.
+  black.pop=SE_T014_003 / SE_T025_001, # Black population...total pop.
+  asian.pop=SE_T014_005 / SE_T025_001, # Asian population...total pop.
+  poor.pop=SE_T185_004 / SE_T025_001)) # Population poor or struggling...total pop.
 survey2006 <- with(acs2006.2010, data.frame(
   FIPS=Geo_FIPS,
-  T002_001=SE_T002_001,
-  T057_001=SE_T057_001,
-  T094_001=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
-  T094_002=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
-  T017_001=SE_T017_001 / SE_T002_003, # Households...by land area
-  T017_002=SE_T017_002 / SE_T002_003, # Family households...by land area
-  T017_003=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
-  T017_005=SE_T017_005 / SE_T002_003, # Family households with lone male householder...by land area
-  T017_006=SE_T017_006 / SE_T002_003, # Family households with lone female householder...land area
-  T017_008=SE_T017_008 / SE_T002_003, # Non-family households with male householder...by land area
-  T017_009=SE_T017_009 / SE_T002_003, # Non-family households with female householder...land area
-  T004_002=SE_T004_002 / SE_T001_001, # Male population normalized by total population
-  T004_003=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
-  T013_002=SE_T013_002 / SE_T001_001, # White population...total pop.
-  T013_003=SE_T013_003 / SE_T001_001, # Black population...total pop.
-  T013_005=SE_T013_005 / SE_T001_001, # Asian population...total pop.
-  T118_004=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
+  pop.density=SE_T002_001,
+  med.hhold.income=SE_T057_001,
+  occupied.housing=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
+  owner.occupied=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
+  hholds=SE_T017_001 / SE_T002_003, # Households...by land area
+  fam.hholds=SE_T017_002 / SE_T002_003, # Family households...by land area
+  married.hholds=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
+  lone.male.hholds=SE_T017_005 / SE_T002_003, # Family -holds with lone male householder...by land area
+  lone.female.hholds=SE_T017_006 / SE_T002_003, # Family -holds with lone female householder...land area
+  male.nonfam.hholds=SE_T017_008 / SE_T002_003, # Non-family -holds with male householder...by land area
+  female.nonfam.hholds=SE_T017_009 / SE_T002_003, # Non-family -holds with female householder...land area
+  male.pop=SE_T004_002 / SE_T001_001, # Male population normalized by total population
+  female.pop=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
+  white.pop=SE_T013_002 / SE_T001_001, # White population...total pop.
+  black.pop=SE_T013_003 / SE_T001_001, # Black population...total pop.
+  asian.pop=SE_T013_005 / SE_T001_001, # Asian population...total pop.
+  poor.pop=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
 
 # Clean-up
-acs2006.2010 <- NULL
-census2000 <- NULL
-census2000.as.2010 <- NULL
-temp <- NULL
+remove(acs2006.2010, census2000, census2000.as.2010, temp)
 
 # =================================================
 # Join census tract shapefiles and census measures
@@ -105,42 +102,52 @@ attr2006 <- merge(tracts, survey2006, by='FIPS')
 file.loc <- '/home/arthur/Workspace/TermProject/'
 
 require(raster)
-rast <- raster::raster(paste0(file.loc, 'nlcd2001_sample.tif'))
+rast2000 <- raster::raster(paste0(file.loc, 'nlcd2001.tif'))
+rast2006 <- raster::raster(paste0(file.loc, 'nlcd2006.tif'))
 reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                            c(20,23,1), c(23,24,2), c(24,99,0)),
                          byrow=TRUE, ncol=3)
-dev <- raster::reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed on right
+dev2000 <- raster::reclassify(rast2000, reclass.matrix, right=TRUE) # Intervals closed on right
+dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
 
-# Create a smaller sample
-ext <- bbox(dev)
-dev2 <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
-                                         ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25))
+# TEMPORARY: Create a smaller sample
+ext <- bbox(dev2000)
+dev2000 <- raster::crop(dev2000,
+                        raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
+                                       ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25))
+dev2006 <- raster::crop(dev2006,
+                        raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
+                                       ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25))
 
 # Match the projection of the land cover layer
-attr2000 <- spTransform(attr2000, raster::crs(dev2))
-attr2006 <- spTransform(attr2006, raster::crs(dev2))
+attr2000 <- sp::spTransform(attr2000, raster::crs(dev2000))
+attr2006 <- sp::spTransform(attr2006, raster::crs(dev2006))
 
 # "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
-devp <- raster::rasterToPoints(dev2, spatial=TRUE)
-t2000 <- sp::over(devp, attr2000)
-t2006 <- sp::over(devp, attr2006)
+devp2000 <- raster::rasterToPoints(dev2000, spatial=TRUE)
+devp2006 <- raster::rasterToPoints(dev2006, spatial=TRUE)
+attr2000 <- sp::over(devp2000, attr2000)
+attr2006 <- sp::over(devp2006, attr2006)
 
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
 # (Naive, but R leaves us with no choice)
 require(plyr)
-cover2000 <- cbind(data.frame(cover=devp$layer), t2000)
-cover2006 <- cbind(data.frame(cover=devp$layer), t2006)
+train.2000 <- na.omit(cbind(data.frame(cover=devp2000$layer), attr2000))
+train.2006 <- na.omit(cbind(data.frame(cover=devp2006$layer), attr2006))
+
+# Clean-up
+remove(ext, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006, devp2000, devp2006)
+
+# Consider 2000 and 2006 observations simultaneously
+train.combined <- rbind(train.2000, train.2006)
 
 # ===================================
 # Training the Bayesian Network (BN)
 
-# Too many parameters makes for slow learning; to begin with, let's just try estimating cover from population density and median household income
+# I removed the "owner.occupied" variable because in IAMB structure learning on the combined training data, this caused arcs in the v-structure to be oriented in opposite directions
 
 require(bnlearn)
-# Start the clock!
-ptm <- proc.time()
-pdag2000 = bnlearn::fast.iamb(cover2000[,(names(cover2000) %in% c('cover', 'T003_001', 'T093_001'))])
-# Stop the clock
-elapsed <- proc.time() - ptm; elapsed
+vars <- c('cover', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds', 'poor.pop')
+pdag.iamb <- bnlearn::iamb(train.combined[,(names(train.combined) %in% vars)])
 
 

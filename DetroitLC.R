@@ -110,6 +110,10 @@ reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
 dev2000 <- raster::reclassify(rast2000, reclass.matrix, right=TRUE) # Intervals closed on right
 dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
 
+# Recreation and outdoor areas
+rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor.shp'),
+                     'semich_rec_and_outdoor')
+
 # TEMPORARY: Create a smaller sample
 ext <- bbox(dev2000)
 dev2000 <- raster::crop(dev2000,
@@ -119,27 +123,53 @@ dev2006 <- raster::crop(dev2006,
                         raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
                                        ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25))
 
+# =========================================
+# Spatially Join Land Cover and Other Data
+
 # Match the projection of the land cover layer
 attr2000 <- sp::spTransform(attr2000, raster::crs(dev2000))
 attr2006 <- sp::spTransform(attr2006, raster::crs(dev2006))
+rec.areas <- sp::spTransform(rec.areas, raster::crs(dev2000))
+
+# Subset to just those areas in the tri-county extent of interest
+rec.areas <- subset(rec.areas, COUNTY %in% c(125, 99, 163), select='TYPE')
 
 # "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
+# In theory the number of points produced in each vectorization should be the same between years; but not in practice
 devp2000 <- raster::rasterToPoints(dev2000, spatial=TRUE)
 devp2006 <- raster::rasterToPoints(dev2006, spatial=TRUE)
+
+# These take a long time
 attr2000 <- sp::over(devp2000, attr2000)
 attr2006 <- sp::over(devp2006, attr2006)
+rec2000 <- sp::over(devp2000, rec.areas)
+
+# Reclassify the recreation area data to a binary map
+rec2000[is.na(rec2000)] <- 0
+rec2000$TYPE[rec2000$TYPE==8] <- 1
+names(rec2000) <- c('rec.area')
+
+# Again, the number of points is different in practice
+rec2006 <- data.frame(rec.area=matrix(nrow=dim(attr2006)[1], ncol=1)) # Copy
+rec2006 <- mutate(rec2006, rec.area=c(rec2000$rec.area, rep(NA, dim(attr2006)[1] - dim(rec2000)[1])))
 
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
 # (Naive, but R leaves us with no choice)
 require(plyr)
-train.2000 <- na.omit(cbind(data.frame(cover=devp2000$layer), attr2000))
-train.2006 <- na.omit(cbind(data.frame(cover=devp2006$layer), attr2006))
+train.2000 <- na.omit(cbind(data.frame(cover=devp2000$layer), attr2000, rec2000))
+train.2006 <- na.omit(cbind(data.frame(cover=devp2006$layer), attr2006, rec2006))
 
-# Clean-up
-remove(ext, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006, devp2000, devp2006)
+# Correct error in type coercion; should be numeric not integer
+train.2006$pop.density <- as.numeric(train.2006$pop.density)
+train.2006$med.hhold.income <- as.numeric(train.2006$med.hhold.income)
+# train.2006 <- apply(train.2006, 2, as.numeric)
 
 # Consider 2000 and 2006 observations simultaneously
 train.combined <- rbind(train.2000, train.2006)
+
+# Clean-up
+remove(ext, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
+       devp2000, devp2006, rec.areas, rec2000, rec2006)
 
 # ===================================
 # Training the Bayesian Network (BN)
@@ -147,7 +177,25 @@ train.combined <- rbind(train.2000, train.2006)
 # I removed the "owner.occupied" variable because in IAMB structure learning on the combined training data, this caused arcs in the v-structure to be oriented in opposite directions
 
 require(bnlearn)
-vars <- c('cover', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds', 'poor.pop')
+vars <- c('cover', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds',
+          'poor.pop', 'rec.area')
 pdag.iamb <- bnlearn::iamb(train.combined[,(names(train.combined) %in% vars)])
+pdag.gs <- bnlearn::gs(train.combined[,(names(train.combined) %in% vars)])
+pdag.hc <- bnlearn::hc(train.combined[,(names(train.combined) %in% vars)])
+pdag.tabu <- bnlearn::tabu(train.combined[,(names(train.combined) %in% vars)])
+pdag.mmhc <- bnlearn::mmhc(train.combined[,(names(train.combined) %in% vars)])
+pdag.rsmax2 <- bnlearn::rsmax2(train.combined[,(names(train.combined) %in% vars)])
 
+# 2014-11-18
+# IAMB and GS produced the same graph; MMHC and RSMAX2 produced another, same graph. Hill Climbing and Tabu Search each produced a different graph from all the other methods.
+# Random restart tests with the Hill Climbing algorithm suggest the directionality between fam.hholds and both poor.pop and cover is highly uncertain. The alternatives (poor.pop -> fam.hholds -> cover) and (poor.pop <- fam.hholds <- cover) are also disputed (and the only dispute) between the Tabu Search and Hill Climbing methods, respectively. All the hybrid and constraint-based methods learned a (fam.hholds -> poor.pop) relationship.
 
+require(bnlearn)
+vars <- c('cover', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds', 'poor.pop')
+pdag.iamb.2000 <- bnlearn::iamb(train.2000[,(names(train.2000) %in% vars)])
+pdag.iamb.2006 <- bnlearn::iamb(train.2006[,(names(train.2006) %in% vars)])
+pdag.mmhc.2000 <- bnlearn::mmhc(train.2000[,(names(train.2000) %in% vars)])
+pdag.mmhc.2006 <- bnlearn::mmhc(train.2006[,(names(train.2006) %in% vars)])
+
+# 2014-11-18
+# When using only 2000-2001 or 2006 data to train the network, the structure learned with IAMB or MMHC is very similar between 2000-2001 and 2006. The only difference in the learned network structures is in that of the IAMB method, which found some connection between cover and both fam.hholds and occupied.housing in 2000-2001 but not in 2006. Also, MMHC found directionality between all nodes in both years while IAMB could not determine directionality.

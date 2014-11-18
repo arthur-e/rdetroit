@@ -75,9 +75,15 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 
 # Methodology
 
+```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
+library(sp, raster)
+library(rgdal)
+```
+
 1. Interpolate 2000 Census data to 2010 Census tract boundaries.
 2. Normalize 2000 Census and ACS 2006 measures.
   - Other measures? Distance to roads?
+  - Slope?
   - Distance to [recreation and open space?](ftp://ftp.semcog.org/outgoing/web/landuse/regrec.zip)
 3. Join census tract attributes to census tract boundaries.
 4. Rasterize census tracts to NLCD grid.
@@ -86,6 +92,7 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
   - Intersect 2001 and 2006 land cover observations with the 2001 and 2006 census measures, respectively.
   - Compare learned network structure across constraint-based, score-based and hybrid structure learning algorithms.
   - Compare learned network structure for 2001 data (only) and 2006 data (only) using Bayes Information Criterion (`bnlearn::score()`).
+  - Use random restarts and perturbation with the Hill Climbing algorithm to determine stability of learned and expert-specified network structures.
   - Learn network only on changed pixels from 2001 to 2006.
   - Construct random undirected graph.
   - Construct expert undirected graph.
@@ -209,11 +216,8 @@ attr2006 <- merge(tracts, survey2006, by='FIPS')
 
 ## Land Cover Data Preparation
 
-```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
-library(sp, raster, rgdal)
-```
-
 ```{r data.management, message=FALSE}
+library(sp, raster, rgdal)
 file.loc <- '/home/arthur/Workspace/TermProject/'
 
 require(raster)
@@ -237,6 +241,27 @@ dev <- raster::reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed o
 ext <- bbox(dev)
 dev <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.1,
                                          ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.1))
+```
+
+## Other Spatial Data Preparation
+
+```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
+library(sp, raster, rgdal)
+```
+
+```{r data.management, message=FALSE}
+file.loc <- '/home/arthur/Workspace/TermProject/'
+rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor.shp'),
+                     'semich_rec_and_outdoor')
+```
+
+### Distance to Roads
+
+Using the [MI Geographic Framework All Roads (v14a) from MiGDL](http://www.mcgi.state.mi.us/mgdl/?rel=thext&action=thmname&cid=14&cat=MI+Geographic+Framework+All+Roads+%28v14a%29) as the source layer...
+
+```
+ogr2ogr -f "ESRI Shapefile" -where "NFC IN (1,2,3)" -clipsrc WayneOakMac_counties.shp semich_roads.shp allroads_miv14a.shp
+gdal_rasterize -tr 30 30 -init 0 -burn 1 semich_roads.shp roads.tiff
 ```
 
 ## Spatial Join of Census Measures and Land Cover Data

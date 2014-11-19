@@ -200,12 +200,23 @@ survey2006 <- with(acs2006.2010, data.frame(
   poor.pop=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
 ```
 
+## Preparing a Common Coordinate Reference System
+
+The spatial data need to be transformed to a common projection, [NAD83 UTM zone 17N](http://spatialreference.org/ref/epsg/26917/).
+
+```
+gdalwarp -t_srs "EPSG:26917" /home/arthur/Workspace/TermProject/nlcd2001.tif /home/arthur/Workspace/TermProject/nlcd2001_nad83.tif
+gdalwarp -t_srs "EPSG:26917" /home/arthur/Workspace/TermProject/nlcd2006.tif /home/arthur/Workspace/TermProject/nlcd2006_nad83.tif
+ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" /usr/local/dev/rdetroit/shp/t10_nad83.shp /usr/local/dev/rdetroit/shp/t10.shp
+ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" /home/arthur/Workspace/TermProject/ancillary/semich_rec_and_outdoor_nad83.shp /home/arthur/Workspace/TermProject/ancillary/semich_rec_and_outdoor.shp
+```
+
 ## Joining Spatial and Attribute Data
 
 ```{r}
 # Join census tract shapefiles and census measures
 require(rgdal)
-tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10.shp', 't10')
+tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10_nad83.shp', 't10')
 tracts$FIPS <- tracts$GEOID10
 tracts <- subset(tracts, select=c('FIPS'))
 
@@ -221,7 +232,7 @@ library(sp, raster, rgdal)
 file.loc <- '/home/arthur/Workspace/TermProject/'
 
 require(raster)
-rast <- raster::raster(paste0(file.loc, 'nlcd2006.tif'))
+rast <- raster::raster(paste0(file.loc, 'nlcd2006_nad83.tif'))
 ```
 
 Next, I reclassify the NLCD raster into three classes:
@@ -251,8 +262,8 @@ library(sp, raster, rgdal)
 
 ```{r data.management, message=FALSE}
 file.loc <- '/home/arthur/Workspace/TermProject/'
-rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor.shp'),
-                     'semich_rec_and_outdoor')
+rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor_nad83.shp'),
+                     'semich_rec_and_outdoor_nad83')
 ```
 
 ### Distance to Roads
@@ -260,8 +271,15 @@ rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor.shp'),
 Using the [MI Geographic Framework All Roads (v14a) from MiGDL](http://www.mcgi.state.mi.us/mgdl/?rel=thext&action=thmname&cid=14&cat=MI+Geographic+Framework+All+Roads+%28v14a%29) as the source layer...
 
 ```
-ogr2ogr -f "ESRI Shapefile" -where "NFC IN (1,2,3)" -clipsrc WayneOakMac_counties.shp semich_roads.shp allroads_miv14a.shp
-gdal_rasterize -tr 30 30 -init 0 -burn 1 semich_roads.shp roads.tiff
+# Filter road types to primary roads and clip the roads layer to a WKT bounding box, setting the output to GCS WGS84 so that a WKT bounding box is acceptable
+ogr2ogr -skipfailures -f "ESRI Shapefile" -where "NFC IN (1,2,3)" -clipdst "POLYGON((-82.35 42.95,-82.35 41.75,-84.11 41.75,-84.11 42.95,-82.35 42.95))" -t_srs "EPSG:4326" semich_roads_wgs84.shp allroads_miv14a.shp
+
+# Transforming back into UTM (linear units must be meters for next step)
+ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" semich_roads_nad83.shp semich_roads_wgs84.shp
+
+# Rasterizing the roads layer and then making a proximity map
+gdal_rasterize -tr 30 30 -init 0 -burn 1 semich_roads_nad83.shp roads.tiff
+gdal_proximity.py roads.tiff roads_proximity.tiff -values 1
 ```
 
 ## Spatial Join of Census Measures and Land Cover Data
@@ -269,7 +287,7 @@ gdal_rasterize -tr 30 30 -init 0 -burn 1 semich_roads.shp roads.tiff
 ```{r}
 library(sp, raster, rgdal)
 # Match the projection of the land cover layer
-attr2000 <- spTransform(attr2000, raster::crs(dev))
+# attr2000 <- spTransform(attr2000, raster::crs(dev))
 
 # "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
 devp <- raster::rasterToPoints(dev, spatial=TRUE)

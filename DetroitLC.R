@@ -1,4 +1,6 @@
-library(sp, raster, rgdal, plyr, reshape2, bnlearn)
+library(sp, raster, rgdal)
+library(plyr, reshape2)
+library(bnlearn)
 
 setwd('/home/arthur/Downloads')
 options(stringsAsFactors=FALSE)
@@ -89,7 +91,7 @@ remove(acs2006.2010, census2000, census2000.as.2010, temp)
 # =================================================
 # Join census tract shapefiles and census measures
 require(rgdal)
-tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10.shp', 't10')
+tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10_nad83.shp', 't10_nad83')
 tracts$FIPS <- tracts$GEOID10
 tracts <- subset(tracts, select=c('FIPS'))
 
@@ -102,8 +104,8 @@ attr2006 <- merge(tracts, survey2006, by='FIPS')
 file.loc <- '/home/arthur/Workspace/TermProject/'
 
 require(raster)
-rast2000 <- raster::raster(paste0(file.loc, 'nlcd2001.tif'))
-rast2006 <- raster::raster(paste0(file.loc, 'nlcd2006.tif'))
+rast2000 <- raster::raster(paste0(file.loc, 'nlcd2001_nad83.tif'))
+rast2006 <- raster::raster(paste0(file.loc, 'nlcd2006_nad83.tif'))
 reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                            c(20,23,1), c(23,24,2), c(24,99,0)),
                          byrow=TRUE, ncol=3)
@@ -111,22 +113,23 @@ dev2000 <- raster::reclassify(rast2000, reclass.matrix, right=TRUE) # Intervals 
 dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
 
 # Recreation and outdoor areas
-rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor.shp'),
-                     'semich_rec_and_outdoor')
+rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor_nad83.shp'),
+                     'semich_rec_and_outdoor_nad83')
+
+# Distance to primary roads
+road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity.tiff'))
 
 # TEMPORARY: Create a smaller sample
 ext <- bbox(dev2000)
-dev2000 <- raster::crop(dev2000,
-                        raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
-                                       ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25))
-dev2006 <- raster::crop(dev2006,
-                        raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
-                                       ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25))
+cropper <- raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
+                          ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25)
+dev2000 <- raster::crop(dev2000, cropper)
+dev2006 <- raster::crop(dev2006, cropper)
 
 # =========================================
 # Spatially Join Land Cover and Other Data
 
-# Match the projection of the land cover layer
+# Raster and vector layers have just SLIGHTLY different projection definitions...
 attr2000 <- sp::spTransform(attr2000, raster::crs(dev2000))
 attr2006 <- sp::spTransform(attr2006, raster::crs(dev2006))
 rec.areas <- sp::spTransform(rec.areas, raster::crs(dev2000))
@@ -139,7 +142,7 @@ rec.areas <- subset(rec.areas, COUNTY %in% c(125, 99, 163), select='TYPE')
 devp2000 <- raster::rasterToPoints(dev2000, spatial=TRUE)
 devp2006 <- raster::rasterToPoints(dev2006, spatial=TRUE)
 
-# These take a long time
+# Extract attributes by their location... These take a long time
 attr2000 <- sp::over(devp2000, attr2000)
 attr2006 <- sp::over(devp2006, attr2006)
 rec2000 <- sp::over(devp2000, rec.areas)
@@ -153,11 +156,16 @@ names(rec2000) <- c('rec.area')
 rec2006 <- data.frame(rec.area=matrix(nrow=dim(attr2006)[1], ncol=1)) # Copy
 rec2006 <- mutate(rec2006, rec.area=c(rec2000$rec.area, rep(NA, dim(attr2006)[1] - dim(rec2000)[1])))
 
+# Sample from the distance to roads layer
+road.proximities <- data.frame(road.proximity=extract(road.proximity, devp2000))
+
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
 # (Naive, but R leaves us with no choice)
 require(plyr)
-train.2000 <- na.omit(cbind(data.frame(cover=devp2000$layer), attr2000, rec2000))
-train.2006 <- na.omit(cbind(data.frame(cover=devp2006$layer), attr2006, rec2006))
+train.2000 <- na.omit(cbind(data.frame(cover=devp2000$layer), attr2000, rec2000,
+                            road.proximities))
+train.2006 <- na.omit(cbind(data.frame(cover=devp2006$layer), attr2006, rec2006,
+                            road.proximities))
 
 # Correct error in type coercion; should be numeric not integer
 train.2006$pop.density <- as.numeric(train.2006$pop.density)
@@ -168,8 +176,8 @@ train.2006$med.hhold.income <- as.numeric(train.2006$med.hhold.income)
 train.combined <- rbind(train.2000, train.2006)
 
 # Clean-up
-remove(ext, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
-       devp2000, devp2006, rec.areas, rec2000, rec2006)
+remove(ext, cropper, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
+       devp2000, devp2006, rec.areas, rec2000, rec2006, road.proximity, road.proximities)
 
 # ===================================
 # Training the Bayesian Network (BN)
@@ -178,7 +186,7 @@ remove(ext, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
 
 require(bnlearn)
 vars <- c('cover', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds',
-          'poor.pop', 'rec.area')
+          'poor.pop', 'rec.area', 'road.proximity')
 pdag.iamb <- bnlearn::iamb(train.combined[,(names(train.combined) %in% vars)])
 pdag.gs <- bnlearn::gs(train.combined[,(names(train.combined) %in% vars)])
 pdag.hc <- bnlearn::hc(train.combined[,(names(train.combined) %in% vars)])

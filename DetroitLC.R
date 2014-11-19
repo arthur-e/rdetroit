@@ -113,8 +113,8 @@ dev2000 <- raster::reclassify(rast2000, reclass.matrix, right=TRUE) # Intervals 
 dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
 
 # Recreation and outdoor areas
-rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor_nad83.shp'),
-                     'semich_rec_and_outdoor_nad83')
+rec.area.proximity <- raster::raster(paste0(file.loc,
+                                            'ancillary/semich_rec_and_outdoor_proximity.tiff'))
 
 # Distance to primary roads
 road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity.tiff'))
@@ -132,10 +132,6 @@ dev2006 <- raster::crop(dev2006, cropper)
 # Raster and vector layers have just SLIGHTLY different projection definitions...
 attr2000 <- sp::spTransform(attr2000, raster::crs(dev2000))
 attr2006 <- sp::spTransform(attr2006, raster::crs(dev2006))
-rec.areas <- sp::spTransform(rec.areas, raster::crs(dev2000))
-
-# Subset to just those areas in the tri-county extent of interest
-rec.areas <- subset(rec.areas, COUNTY %in% c(125, 99, 163), select='TYPE')
 
 # "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
 # In theory the number of points produced in each vectorization should be the same between years; but not in practice
@@ -145,27 +141,20 @@ devp2006 <- raster::rasterToPoints(dev2006, spatial=TRUE)
 # Extract attributes by their location... These take a long time
 attr2000 <- sp::over(devp2000, attr2000)
 attr2006 <- sp::over(devp2006, attr2006)
-rec2000 <- sp::over(devp2000, rec.areas)
-
-# Reclassify the recreation area data to a binary map
-rec2000[is.na(rec2000)] <- 0
-rec2000$TYPE[rec2000$TYPE==8] <- 1
-names(rec2000) <- c('rec.area')
-
-# Again, the number of points is different in practice
-rec2006 <- data.frame(rec.area=matrix(nrow=dim(attr2006)[1], ncol=1)) # Copy
-rec2006 <- mutate(rec2006, rec.area=c(rec2000$rec.area, rep(NA, dim(attr2006)[1] - dim(rec2000)[1])))
 
 # Sample from the distance to roads layer
 road.proximities <- data.frame(road.proximity=extract(road.proximity, devp2000))
 
+rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity,
+                                                         devp2000))
+
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
 # (Naive, but R leaves us with no choice)
 require(plyr)
-train.2000 <- na.omit(cbind(data.frame(cover=devp2000$layer), attr2000, rec2000,
-                            road.proximities))
-train.2006 <- na.omit(cbind(data.frame(cover=devp2006$layer), attr2006, rec2006,
-                            road.proximities))
+train.2000 <- na.omit(cbind(data.frame(cover=devp2000$layer), attr2000,
+                            rec.proximities, road.proximities))
+train.2006 <- na.omit(cbind(data.frame(cover=devp2006$layer), attr2006,
+                            rec.proximities, road.proximities))
 
 # Correct error in type coercion; should be numeric not integer
 train.2006$pop.density <- as.numeric(train.2006$pop.density)
@@ -177,16 +166,17 @@ train.combined <- rbind(train.2000, train.2006)
 
 # Clean-up
 remove(ext, cropper, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
-       devp2000, devp2006, rec.areas, rec2000, rec2006, road.proximity, road.proximities)
+       devp2000, devp2006, rec.area.proximity, rec.proximities,
+       road.proximity, road.proximities)
 
 # ===================================
 # Training the Bayesian Network (BN)
 
-# I removed the "owner.occupied" variable because in IAMB structure learning on the combined training data, this caused arcs in the v-structure to be oriented in opposite directions
+# I removed the "owner.occupied" variable because in IAMB structure learning it caused a massive number of interconnections between nodes to be formed.
 
 require(bnlearn)
 vars <- c('cover', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds',
-          'poor.pop', 'rec.area', 'road.proximity')
+          'poor.pop', 'rec.area.proximity', 'road.proximity')
 pdag.iamb <- bnlearn::iamb(train.combined[,(names(train.combined) %in% vars)])
 pdag.gs <- bnlearn::gs(train.combined[,(names(train.combined) %in% vars)])
 pdag.hc <- bnlearn::hc(train.combined[,(names(train.combined) %in% vars)])

@@ -256,14 +256,38 @@ dev <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1
 
 ## Other Spatial Data Preparation
 
-```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
-library(sp, raster, rgdal)
+### Distance to Recreation and Outdoor Areas
+
+```
+gdal_rasterize -tr 30 30 -init 0 -burn 1 semich_rec_and_outdoor_nad83.shp semich_rec_and_outdoor_nad83.tiff
+gdal_proximity.py -values 1 semich_rec_and_outdoor_nad83.tiff semich_rec_and_outdoor_proximity.tiff
 ```
 
-```{r data.management, message=FALSE}
-file.loc <- '/home/arthur/Workspace/TermProject/'
+If using the recreation areas as a binary map...
+
+```{r eval=FALSE}
+require(sp, raster)
+
+# Recreation and outdoor areas
 rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor_nad83.shp'),
                      'semich_rec_and_outdoor_nad83')
+
+# Raster and vector layers have just SLIGHTLY different projection definitions...
+rec.areas <- sp::spTransform(rec.areas, raster::crs(dev2000))
+
+# Subset to just those areas in the tri-county extent of interest
+rec.areas <- subset(rec.areas, COUNTY %in% c(125, 99, 163), select='TYPE')
+
+rec2000 <- sp::over(devp2000, rec.areas)
+
+# Reclassify the recreation area data to a binary map
+rec2000[is.na(rec2000)] <- 0
+rec2000$TYPE[rec2000$TYPE==8] <- 1
+names(rec2000) <- c('rec.area')
+
+# Again, the number of points is different in practice
+rec2006 <- data.frame(rec.area=matrix(nrow=dim(attr2006)[1], ncol=1)) # Copy
+rec2006 <- mutate(rec2006, rec.area=c(rec2000$rec.area, rep(NA, dim(attr2006)[1] - dim(rec2000)[1])))
 ```
 
 ### Distance to Roads

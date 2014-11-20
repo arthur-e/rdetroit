@@ -97,6 +97,13 @@ library(rgdal)
   - Construct random undirected graph.
   - Construct expert undirected graph.
   - Complete graphs by learning on undirected graphs.
+7. Parameterize the nodes of the BN.
+8. Assess predictions of BN in the absence of a CA model.
+  - What is the nature of the BN predictions? Are they propagated from state variable observations?
+  - If so, can we use the BN in absence of a CA to predict transition probabilities for each pixel in 2006, 2011?
+  - Then, evaluate the effect of picking this threshold for each land cover class transition in 2006, 2011.
+  - If we need a CA model to drive land comver changes, use simple rules from the SLEUTH model to propagate year-to-year changes stochastically based on the conditional probabilities.
+9. Investigate the effect of monotonic changes in population density, medium household income, and (proportion) occupied housing on land cover.
 
 ## Dependencies
 

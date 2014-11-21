@@ -152,27 +152,23 @@ rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity,
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
 # (Naive, but R leaves us with no choice)
 require(plyr)
-train.2000 <- na.omit(cbind(data.frame(cover=devp2000$layer), attr2000,
-                            rec.proximities, road.proximities))
-train.2006 <- na.omit(cbind(data.frame(cover=devp2006$layer), attr2006,
-                            rec.proximities, road.proximities))
+training <- na.omit(cbind(data.frame(old=devp2000$layer, new=devp2006$layer), attr2006,
+                          rec.proximities, road.proximities))
 
 # Correct error in type coercion; should be numeric not integer
-train.2006$pop.density <- as.numeric(train.2006$pop.density)
-train.2006$med.hhold.income <- as.numeric(train.2006$med.hhold.income)
-# train.2006 <- apply(train.2006, 2, as.numeric)
+training$pop.density <- as.numeric(training$pop.density)
+training$med.hhold.income <- as.numeric(training$med.hhold.income)
+# training <- apply(training, 2, as.numeric)
 
-# Consider 2000 and 2006 observations simultaneously
-train.combined <- rbind(train.2000, train.2006)
+# How many pixels changed from 2001 to 2006?
+dim(training[training$old != training$new,])[1]
 
 # Clean-up
 remove(ext, cropper, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
        devp2000, devp2006, rec.area.proximity, rec.proximities,
        road.proximity, road.proximities)
 
-save(train.2000, file='rda/train_2000.rda')
-save(train.2000, file='rda/train_2006.rda')
-save(train.combined, file='rda/train_combined.rda')
+save(training, file='rda/training.rda')
 
 # ===================================
 # Training the Bayesian Network (BN)
@@ -180,25 +176,81 @@ save(train.combined, file='rda/train_combined.rda')
 # I removed the "owner.occupied" variable because in IAMB structure learning it caused a massive number of interconnections between nodes to be formed.
 
 require(bnlearn)
-vars <- c('cover', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds',
+vars <- c('old', 'new', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds',
           'poor.pop', 'rec.area.proximity', 'road.proximity')
-pdag.iamb <- bnlearn::iamb(train.combined[,(names(train.combined) %in% vars)])
-pdag.gs <- bnlearn::gs(train.combined[,(names(train.combined) %in% vars)])
-pdag.hc <- bnlearn::hc(train.combined[,(names(train.combined) %in% vars)])
-pdag.tabu <- bnlearn::tabu(train.combined[,(names(train.combined) %in% vars)])
-pdag.mmhc <- bnlearn::mmhc(train.combined[,(names(train.combined) %in% vars)])
-pdag.rsmax2 <- bnlearn::rsmax2(train.combined[,(names(train.combined) %in% vars)])
+pdag <- bnlearn::iamb(training[,(names(training) %in% vars)])
+plot(bnlearn::gs(training[,(names(training) %in% vars)]));title('Grow-Shrink')
+plot(bnlearn::hc(training[,(names(training) %in% vars)]));title('Hill-Climbing')
+plot(bnlearn::tabu(training[,(names(training) %in% vars)]));title('Tabu Scoring')
+plot(bnlearn::mmhc(training[,(names(training) %in% vars)]));title('MMHC')
+plot(bnlearn::rsmax2(training[,(names(training) %in% vars)]));title('RSMAX2')
 
 # 2014-11-18
 # IAMB and GS produced the same graph; MMHC and RSMAX2 produced another, same graph. Hill Climbing and Tabu Search each produced a different graph from all the other methods.
 # Random restart tests with the Hill Climbing algorithm suggest the directionality between fam.hholds and both poor.pop and cover is highly uncertain. The alternatives (poor.pop -> fam.hholds -> cover) and (poor.pop <- fam.hholds <- cover) are also disputed (and the only dispute) between the Tabu Search and Hill Climbing methods, respectively. All the hybrid and constraint-based methods learned a (fam.hholds -> poor.pop) relationship.
 
-require(bnlearn)
-vars <- c('cover', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds', 'poor.pop')
-pdag.iamb.2000 <- bnlearn::iamb(train.2000[,(names(train.2000) %in% vars)])
-pdag.iamb.2006 <- bnlearn::iamb(train.2006[,(names(train.2006) %in% vars)])
-pdag.mmhc.2000 <- bnlearn::mmhc(train.2000[,(names(train.2000) %in% vars)])
-pdag.mmhc.2006 <- bnlearn::mmhc(train.2006[,(names(train.2006) %in% vars)])
-
 # 2014-11-18
 # When using only 2000-2001 or 2006 data to train the network, the structure learned with IAMB or MMHC is very similar between 2000-2001 and 2006. The only difference in the learned network structures is in that of the IAMB method, which found some connection between cover and both fam.hholds and occupied.housing in 2000-2001 but not in 2006. Also, MMHC found directionality between all nodes in both years while IAMB could not determine directionality.
+
+# 2014-11-21
+# The network learning algorithms suggested that only road.proximity, rec.area.proximity, and med.hhold.income were consistently connected to old and new land cover. I believe that population density has to be a big factor so I'm keeping it in.
+
+vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'med.hhold.income', 'pop.density')
+plot(bnlearn::hc(training[,(names(training) %in% vars)], restart=1));title('Hill-Climbing')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=5));title('Hill-Climbing; Restarts=5')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=10));title('Hill-Climbing; Restarts=10')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=20));title('Hill-Climbing; Restarts=20')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=10, perturb=5));title('Hill-Climbing; Restarts=10, Perturbations=5')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=20, perturb=10));title('Hill-Climbing; Restarts=20, Perturbations=10')
+
+plot(bnlearn::mmhc(training[,(names(training) %in% vars)]));title('MMHC')
+plot(bnlearn::rsmax2(training[,(names(training) %in% vars)]));title('RSMAX2')
+
+# 2014-11-21
+# Hill climbing stress tests revealed a complex and unstable structure but the hybrid algorithms agree 100% as to the network structure and both find it complete and totally without any interactions including the pop.density variable.
+
+vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'med.hhold.income')
+plot(bnlearn::hc(training[,(names(training) %in% vars)], restart=1));title('Hill-Climbing')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=5));title('Hill-Climbing; Restarts=5')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=10));title('Hill-Climbing; Restarts=10')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=20));title('Hill-Climbing; Restarts=20')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=10, perturb=5));title('Hill-Climbing; Restarts=10, Perturbations=5')
+plot(bnlearn::hc(training[,(names(training) %in% vars)],
+                 restart=20, perturb=10));title('Hill-Climbing; Restarts=20, Perturbations=10')
+
+plot(bnlearn::mmhc(training[,(names(training) %in% vars)]));title('MMHC')
+plot(bnlearn::rsmax2(training[,(names(training) %in% vars)]));title('RSMAX2')
+
+# 2014-11-21
+# Hill climbing stress tests without the pop.density variable reveal a more consistent and realistic structure. Again, the same network emerged from the two hybrid learning algorithms. I will try two versions of the learned network: A composite of the stochastic hill climbing efforts and the network that emerged from the two hyrbid approaches.
+
+#====================
+# Parameter Learning
+
+training.data <- training[,(names(training) %in% vars)]
+pdag.hc <- empty.graph(vars)
+pdag.mmhc <- bnlearn::mmhc(training.data)
+pdag.rsmax2 <- bnlearn::rsmax2(training.data)
+
+# Specify the arcs in the PDAG based on the hill-climbing stress tests
+arcs(pdag.hc) <- matrix(c('old', 'new', 'old', 'road.proximity', 'old', 'med.hhold.income', 'road.proximity', 'new', 'med.hhold.income', 'new', 'med.hhold.income', 'road.proximity', 'med.hhold.income', 'rec.area.proximity', 'rec.area.proximity', 'road.proximity'),
+                        ncol=2, byrow=TRUE, dimnames = list(NULL, c("from", "to")))
+plot(pdag.hc)
+
+# How do the two learned model structures compare?
+score(pdag.hc, data=training.data)
+score(pdag.mmhc, data=training.data)
+
+
+
+
+

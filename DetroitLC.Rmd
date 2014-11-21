@@ -84,7 +84,6 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 4. Rasterize census tracts to NLCD grid.
 5. Configure the Bayesian network's nodes; include land use drivers and future land use states (classes).
 6. Learn the Bayesian network structure.
-  - Intersect 2001 and 2006 land cover observations with the 2001 and 2006 census measures, respectively.
   - Compare learned network structure across constraint-based, score-based and hybrid structure learning algorithms.
   - Compare learned network structure for 2001 data (only) and 2006 data (only) using Bayes Information Criterion (`bnlearn::score()`).
   - Use random restarts and perturbation with the Hill Climbing algorithm to determine stability of learned and expert-specified network structures.

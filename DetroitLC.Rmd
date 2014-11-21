@@ -75,11 +75,6 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 
 # Methodology
 
-```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
-library(sp, raster)
-library(rgdal)
-```
-
 1. Interpolate 2000 Census data to 2010 Census tract boundaries.
 2. Normalize 2000 Census and ACS 2006 measures.
   - Other measures? Distance to roads?
@@ -118,6 +113,11 @@ From [U.S. 2010: Discover America in a New Century](http://www.s4.brown.edu/us20
 Reference to use is: "John R. Logan, Zengwang Xu, and Brian Stults. 2012. “Interpolating US Decennial Census Tract Data from as Early as 1970 to 2010: A Longitudinal Tract Database” Professional Geographer, forthcoming."
 
 ## Interpolating 2000 Census Tracts to 2010 Census Tracts
+
+```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
+library(sp, raster)
+library(rgdal)
+```
 
 ```{r}
 setwd('/home/arthur/Downloads')

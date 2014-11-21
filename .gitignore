@@ -3,4 +3,6 @@ syntax: glob
 *.html
 *.pdf
 csv/*
+rda/*
 shp/*
+census_data/*

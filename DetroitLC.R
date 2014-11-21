@@ -1,8 +1,9 @@
-library(sp, raster, rgdal)
+library(sp, raster)
+library(rgdal)
 library(plyr, reshape2)
 library(bnlearn)
 
-setwd('/home/arthur/Downloads')
+setwd('/usr/local/dev/rdetroit/')
 options(stringsAsFactors=FALSE)
 
 census.vars <- c('SE_T003_001', 'SE_T093_001', 'SE_T155_001', 'SE_T156_001', 'SE_T156_002', 'SE_T004_002', 'SE_T005_002', 'SE_T005_003', 'SE_T014_002', 'SE_T014_003', 'SE_T014_005', 'SE_T020_001', 'SE_T020_002', 'SE_T020_003', 'SE_T020_005', 'SE_T020_006', 'SE_T020_008', 'SE_T020_009', 'SE_T025_001', 'SE_T185_004')
@@ -10,12 +11,12 @@ acs.vars <- c('SE_T002_001', 'SE_T001_001', 'SE_T004_002', 'SE_T004_003', 'SE_T0
 
 # =======================================
 # Reading in census and crosswalk tables
-census2000 <- read.csv('census2000.csv', header=T, skip=1,
+census2000 <- read.csv('census_data/census2000.csv', header=T, skip=1,
                        colClasses=c('Geo_FIPS'='character')) # 2000 Census data
-acs2006.2010 <- read.csv('acs2006-2010.csv', header=T, skip=1,
+acs2006.2010 <- read.csv('census_data/acs2006-2010.csv', header=T, skip=1,
                          colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
-tracts <- union(census2000$Census.Tract, acs2006.2010$Census.Tract)
-xwalk <- plyr::arrange(read.csv('crosswalk_2000_2010.csv', colClasses=c('character', 'character')),
+xwalk <- plyr::arrange(read.csv('census_data/crosswalk_2000_2010.csv',
+                                colClasses=c('character', 'character')),
                  trtid10) # 2000 to 2010 Crosswalk data
 xwalk <- within(xwalk, weight <- as.numeric(weight))
 
@@ -168,6 +169,10 @@ train.combined <- rbind(train.2000, train.2006)
 remove(ext, cropper, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
        devp2000, devp2006, rec.area.proximity, rec.proximities,
        road.proximity, road.proximities)
+
+save(train.2000, file='rda/train_2000.rda')
+save(train.2000, file='rda/train_2006.rda')
+save(train.combined, file='rda/train_combined.rda')
 
 # ===================================
 # Training the Bayesian Network (BN)

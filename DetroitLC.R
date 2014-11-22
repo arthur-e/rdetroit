@@ -120,10 +120,10 @@ dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
 
 # Recreation and outdoor areas
 rec.area.proximity <- raster::raster(paste0(file.loc,
-                                            'ancillary/semich_rec_and_outdoor_proximity.tiff'))
+                                            'ancillary/rec+outdoor_nad83_prox_cut.tiff'))
 
 # Distance to primary roads
-road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity.tiff'))
+road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity_cut.tiff'))
 
 # TEMPORARY: Create a smaller sample
 # ext <- bbox(dev2000)
@@ -137,34 +137,34 @@ road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity.tif
 
 # Raster and vector layers have just SLIGHTLY different projection definitions...
 # require(rgdal)
-# tracts <- sp::spTransform(tracts, raster::crs(dev2000))
+attr2000 <- sp::spTransform(attr2000, raster::crs(dev2000))
+attr2006 <- sp::spTransform(attr2006, raster::crs(dev2000))
 
-# "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
-# In theory the number of points produced in each vectorization should be the same between years; but not in practice
-# devp2000 <- raster::rasterToPoints(dev2000, spatial=TRUE)
-# devp2006 <- raster::rasterToPoints(dev2006, spatial=TRUE)
+devp2000 <- SpatialPoints(as.data.frame(dev2000, xy=TRUE)[,1:2],
+                          proj4string=crs(attr2000))
+devp2006 <- SpatialPoints(as.data.frame(dev2006, xy=TRUE)[,1:2],
+                          proj4string=crs(attr2006))
 
-# Extract attributes by their location... These take a long time
-# tp2000 <- sp::over(devp2000, tracts)
-# tp2006 <- sp::over(devp2006, tracts)
-
-# attr2000 <- merge(tp2000, attr2000, by='FIPS')
-# attr2006 <- merge(tp2006, attr2006, by='FIPS')
+# Extract attributes by their location... This takes a long time (about 4 minutes for each)
+attr2000 <- sp::over(devp2000, attr2000)
+attr2006 <- sp::over(devp2006, attr2006)
 
 # Sample from the distance to roads layer
 road.proximities <- data.frame(road.proximity=extract(road.proximity, devp2000))
+rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity, devp2000))
 
-rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity,
-                                                         devp2000))
-
-# save(devp2000, devp2006, attr2000, attr2006, file='rda/allData.rda')
+save(road.proximities, rec.proximities, attr2000, attr2006, devp2000, devp2006,
+     file='rda/allData.rda')
 load(file='rda/allData.rda')
 
-# Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
-# (Naive, but R leaves us with no choice)
+# Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled (Naive, but R leaves us with no choice)
 require(plyr)
-training <- na.omit(cbind(data.frame(old=devp2000$layer, new=devp2006$layer), attr2006,
-                          rec.proximities, road.proximities))
+training <- na.omit(cbind(data.frame(old=as.data.frame(dev2000, xy=TRUE)$layer,
+                                     new=as.data.frame(dev2006, xy=TRUE)$layer),
+                          attr2006, rec.proximities, road.proximities))
+
+save(training, file='rda/training.rda')
+load(file='rda/training.rda')
 
 # Correct error in type coercion; should be numeric not integer
 training$pop.density <- as.numeric(training$pop.density)

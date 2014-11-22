@@ -105,6 +105,68 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 install.packages(c('bnlearn', 'reshape2', 'plyr', 'ggplot2', 'sp', 'raster', 'rgdal'))
 ```
 
+## Preparing a Common Coordinate Reference System
+
+We'll use the census tracts as cutline features.
+
+```
+mkdir -p /usr/local/dev/rdetroit/shp && cd /usr/local/dev/rdetroit/shp
+wget ftp://ftp.semcog.org/outgoing/web/demographic/regtrct00.zip
+wget ftp://ftp.semcog.org/outgoing/web/demographic/regtrct10.zip
+unzip regtrct00.zip
+unzip regtrct10.zip
+ogr2ogr -f "ESRI Shapefile" -where "COUNTY=99 OR COUNTY=125 OR COUNTY=163" t10.shp regtrct10.shp
+ogr2ogr -f "ESRI Shapefile" -where "COUNTY=99 OR COUNTY=125 OR COUNTY=163" t00.shp regtrc00.shp
+rm *.zip
+rm regtrct10.*
+rm regtrc00.*
+ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" /usr/local/dev/rdetroit/shp/t10_nad83.shp /usr/local/dev/rdetroit/shp/t10.shp
+```
+
+The spatial data need to be transformed to a common projection, [NAD83 UTM zone 17N](http://spatialreference.org/ref/epsg/26917/).
+
+```
+gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline /home/arthur/Workspace/TermProject/nlcd2001.tif /home/arthur/Workspace/TermProject/nlcd2001_nad83.tif
+gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline /home/arthur/Workspace/TermProject/nlcd2006.tif /home/arthur/Workspace/TermProject/nlcd2006_nad83.tif
+```
+
+### Distance to Recreation and Outdoor Areas
+
+Recreation and outdoor areas provided by SEMCOG [via this link](ftp://ftp.semcog.org/outgoing/web/landuse/regrec.zip).
+
+```
+FILE_LOC=/home/arthur/Workspace/TermProject/ancillary
+
+wget ftp://ftp.semcog.org/outgoing/web/landuse/regrec.zip
+unzip regrec.zip
+
+# Project the Shapefile
+ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" $FILE_LOC/rec+outdoor_nad83.shp $FILE_LOC/regrec.shp
+
+# Rasterize, calculate proximity, and cut to the census tracts extent
+gdal_rasterize -tr 30 30 -init 0 -burn 1 $FILE_LOC/rec+outdoor_nad83.shp $FILE_LOC/rec+outdoor_nad83.tiff
+gdal_proximity.py -values 1 $FILE_LOC/rec+outdoor_nad83.tiff $FILE_LOC/rec+outdoor_nad83_prox.tiff
+gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline $FILE_LOC/rec+outdoor_nad83_prox.tiff $FILE_LOC/rec+outdoor_nad83_prox_cut.tiff
+```
+
+### Distance to Roads
+
+Using the [MI Geographic Framework All Roads (v14a) from MiGDL](http://www.mcgi.state.mi.us/mgdl/?rel=thext&action=thmname&cid=14&cat=MI+Geographic+Framework+All+Roads+%28v14a%29) as the source layer...
+
+```
+# Filter road types to primary roads and clip the roads layer to a WKT bounding box, setting the output to GCS WGS84 so that a WKT bounding box is acceptable
+ogr2ogr -skipfailures -f "ESRI Shapefile" -where "NFC IN (1,2,3)" -clipdst "POLYGON((-82.35 42.95,-82.35 41.75,-84.11 41.75,-84.11 42.95,-82.35 42.95))" -t_srs "EPSG:4326" $FILE_LOC/semich_roads_wgs84.shp $FILE_LOC/allroads_miv14a.shp
+
+# Transforming back into UTM (linear units must be meters for next step)
+ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" $FILE_LOC/semich_roads_nad83.shp $FILE_LOC/semich_roads_wgs84.shp
+
+# Rasterizing the roads layer and then making a proximity map
+gdal_rasterize -tr 30 30 -init 0 -burn 1 $FILE_LOC/semich_roads_nad83.shp $FILE_LOC/roads.tiff
+gdal_proximity.py $FILE_LOC/roads.tiff $FILE_LOC/roads_proximity.tiff -values 1
+
+gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline $FILE_LOC/roads_proximity.tiff $FILE_LOC/roads_proximity_cut.tiff
+```
+
 ## Cross-Walking Census Data
 
 From [U.S. 2010: Discover America in a New Century](http://www.s4.brown.edu/us2010/Researcher/ltdb3.htm): "The crosswalk identifies what portion of a tract in one year should be allocated to a 2010 tract. For every decennial year from 1970 to 2000, every row in the crosswalk lists a 2010 tract ID, the ID of a tract in the source year that contributes to it, and the share of the source tract's population attributes that should be allocated to the 2010 tract. In cases where there is an exact correspondence between the source tract and the 2010 tract, there is only one row of data for the 2010 tract. Otherwise there are as many rows as there are contributing tracts."
@@ -206,17 +268,6 @@ survey2006 <- with(acs2006.2010, data.frame(
   poor.pop=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
 ```
 
-## Preparing a Common Coordinate Reference System
-
-The spatial data need to be transformed to a common projection, [NAD83 UTM zone 17N](http://spatialreference.org/ref/epsg/26917/).
-
-```
-gdalwarp -t_srs "EPSG:26917" /home/arthur/Workspace/TermProject/nlcd2001.tif /home/arthur/Workspace/TermProject/nlcd2001_nad83.tif
-gdalwarp -t_srs "EPSG:26917" /home/arthur/Workspace/TermProject/nlcd2006.tif /home/arthur/Workspace/TermProject/nlcd2006_nad83.tif
-ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" /usr/local/dev/rdetroit/shp/t10_nad83.shp /usr/local/dev/rdetroit/shp/t10.shp
-ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" /home/arthur/Workspace/TermProject/ancillary/semich_rec_and_outdoor_nad83.shp /home/arthur/Workspace/TermProject/ancillary/semich_rec_and_outdoor.shp
-```
-
 ## Joining Spatial and Attribute Data
 
 ```{r}
@@ -264,12 +315,7 @@ dev <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1
 
 ### Distance to Recreation and Outdoor Areas
 
-```
-gdal_rasterize -tr 30 30 -init 0 -burn 1 semich_rec_and_outdoor_nad83.shp semich_rec_and_outdoor_nad83.tiff
-gdal_proximity.py -values 1 semich_rec_and_outdoor_nad83.tiff semich_rec_and_outdoor_proximity.tiff
-```
-
-If using the recreation areas as a binary map...
+Only if using the recreation areas as a binary map...
 
 ```{r eval=FALSE}
 require(sp, raster)
@@ -294,22 +340,6 @@ names(rec2000) <- c('rec.area')
 # Again, the number of points is different in practice
 rec2006 <- data.frame(rec.area=matrix(nrow=dim(attr2006)[1], ncol=1)) # Copy
 rec2006 <- mutate(rec2006, rec.area=c(rec2000$rec.area, rep(NA, dim(attr2006)[1] - dim(rec2000)[1])))
-```
-
-### Distance to Roads
-
-Using the [MI Geographic Framework All Roads (v14a) from MiGDL](http://www.mcgi.state.mi.us/mgdl/?rel=thext&action=thmname&cid=14&cat=MI+Geographic+Framework+All+Roads+%28v14a%29) as the source layer...
-
-```
-# Filter road types to primary roads and clip the roads layer to a WKT bounding box, setting the output to GCS WGS84 so that a WKT bounding box is acceptable
-ogr2ogr -skipfailures -f "ESRI Shapefile" -where "NFC IN (1,2,3)" -clipdst "POLYGON((-82.35 42.95,-82.35 41.75,-84.11 41.75,-84.11 42.95,-82.35 42.95))" -t_srs "EPSG:4326" semich_roads_wgs84.shp allroads_miv14a.shp
-
-# Transforming back into UTM (linear units must be meters for next step)
-ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" semich_roads_nad83.shp semich_roads_wgs84.shp
-
-# Rasterizing the roads layer and then making a proximity map
-gdal_rasterize -tr 30 30 -init 0 -burn 1 semich_roads_nad83.shp roads.tiff
-gdal_proximity.py roads.tiff roads_proximity.tiff -values 1
 ```
 
 ## Spatial Join of Census Measures and Land Cover Data

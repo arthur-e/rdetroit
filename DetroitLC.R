@@ -35,8 +35,7 @@ temp <- melt(join(xwalk, census2000, by=c('trtid00')),
 temp <- within(temp, value <- value * weight) # Scale the census measures by Brown et al.'s weights
 
 # Recast 2010 census tracts as a sum of the 2000 census measures
-census2000.as.2010 <- within(dcast(temp, trtid10 ~ variable, fun.aggregate=sum, value.var='value'),
-                             Geo_FIPS <- trtid10)
+census2000.as.2010 <- within(dcast(temp, trtid10 ~ variable, fun.aggregate=sum, value.var='value'), Geo_FIPS <- trtid10)
 
 # For some reason, a couple of tracts in the ACS are not in the 2010 interpolation of the 2000 census
 disjoint.tracts <- union(setdiff(census2000.as.2010$Geo_FIPS, acs2006.2010$Geo_FIPS),
@@ -44,6 +43,12 @@ disjoint.tracts <- union(setdiff(census2000.as.2010$Geo_FIPS, acs2006.2010$Geo_F
 
 acs2006.2010 <- subset(acs2006.2010, !Geo_FIPS %in% disjoint.tracts)
 census2000.as.2010 <- subset(census2000.as.2010, !Geo_FIPS %in% disjoint.tracts)
+
+require(ggplot2)
+ggplot(data=melt(census2000.as.2010, id.vars=c('trtid10', 'Geo_FIPS')),
+                 mapping=aes(x=value, group=variable)) +
+  geom_histogram() +
+  facet_wrap(~ variable, scales='free')
 
 # ========================
 # Normalizing census data
@@ -121,33 +126,39 @@ rec.area.proximity <- raster::raster(paste0(file.loc,
 road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity.tiff'))
 
 # TEMPORARY: Create a smaller sample
-ext <- bbox(dev2000)
-cropper <- raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
-                          ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25)
-dev2000 <- raster::crop(dev2000, cropper)
-dev2006 <- raster::crop(dev2006, cropper)
+# ext <- bbox(dev2000)
+# cropper <- raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
+#                           ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25)
+# dev2000 <- raster::crop(dev2000, cropper)
+# dev2006 <- raster::crop(dev2006, cropper)
 
 # =========================================
 # Spatially Join Land Cover and Other Data
 
 # Raster and vector layers have just SLIGHTLY different projection definitions...
-attr2000 <- sp::spTransform(attr2000, raster::crs(dev2000))
-attr2006 <- sp::spTransform(attr2006, raster::crs(dev2006))
+# require(rgdal)
+# tracts <- sp::spTransform(tracts, raster::crs(dev2000))
 
 # "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
 # In theory the number of points produced in each vectorization should be the same between years; but not in practice
-devp2000 <- raster::rasterToPoints(dev2000, spatial=TRUE)
-devp2006 <- raster::rasterToPoints(dev2006, spatial=TRUE)
+# devp2000 <- raster::rasterToPoints(dev2000, spatial=TRUE)
+# devp2006 <- raster::rasterToPoints(dev2006, spatial=TRUE)
 
 # Extract attributes by their location... These take a long time
-attr2000 <- sp::over(devp2000, attr2000)
-attr2006 <- sp::over(devp2006, attr2006)
+# tp2000 <- sp::over(devp2000, tracts)
+# tp2006 <- sp::over(devp2006, tracts)
+
+# attr2000 <- merge(tp2000, attr2000, by='FIPS')
+# attr2006 <- merge(tp2006, attr2006, by='FIPS')
 
 # Sample from the distance to roads layer
 road.proximities <- data.frame(road.proximity=extract(road.proximity, devp2000))
 
 rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity,
                                                          devp2000))
+
+# save(devp2000, devp2006, attr2000, attr2006, file='rda/allData.rda')
+load(file='rda/allData.rda')
 
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
 # (Naive, but R leaves us with no choice)
@@ -170,20 +181,34 @@ remove(ext, cropper, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, de
 
 save(training, file='rda/training.rda')
 
+#=======================
+# Discretizing the Data
+
+require(ggplot2)
+ggplot(data=melt(training, id.vars='FIPS'), mapping=aes(x=value, group=variable)) +
+  geom_histogram() +
+  facet_wrap(~ variable, scales='free')
+
+cases <- data.frame(t(combn(setdiff(colnames(training), c('new', 'FIPS')), 2)))
+
+require(plyr)
+cases <- ddply(cases, ~ X1 + X2, mutate,
+      r.sq=cor.test(training[,X1], training[,X2], method='pearson')$estimate,
+      p.value=cor.test(training[,X1], training[,X2], method='pearson')$p.value)
+
+subset(cases, abs(r.sq) > 0.5)
+vars <- c('old', 'new', 'road.proximity', 'owner.occupied', 'rec.area.proximity',
+
+summary(training.data)
+#bnlearn::discretize(training.data, breaks=c(3, 3, 2,
+
 # ===================================
 # Training the Bayesian Network (BN)
 
 # I removed the "owner.occupied" variable because in IAMB structure learning it caused a massive number of interconnections between nodes to be formed.
 
-require(bnlearn)
-vars <- c('old', 'new', 'pop.density', 'med.hhold.income', 'occupied.housing', 'fam.hholds',
-          'poor.pop', 'rec.area.proximity', 'road.proximity')
-pdag <- bnlearn::iamb(training[,(names(training) %in% vars)])
-plot(bnlearn::gs(training[,(names(training) %in% vars)]));title('Grow-Shrink')
-plot(bnlearn::hc(training[,(names(training) %in% vars)]));title('Hill-Climbing')
-plot(bnlearn::tabu(training[,(names(training) %in% vars)]));title('Tabu Scoring')
-plot(bnlearn::mmhc(training[,(names(training) %in% vars)]));title('MMHC')
-plot(bnlearn::rsmax2(training[,(names(training) %in% vars)]));title('RSMAX2')
+vars <- c('old', 'new', 'pop.density', 'med.hhold.income', 'occupied.housing',
+          'fam.hholds', 'poor.pop', 'rec.area.proximity', 'road.proximity')
 
 # 2014-11-18
 # IAMB and GS produced the same graph; MMHC and RSMAX2 produced another, same graph. Hill Climbing and Tabu Search each produced a different graph from all the other methods.
@@ -237,18 +262,23 @@ plot(bnlearn::rsmax2(training[,(names(training) %in% vars)]));title('RSMAX2')
 # Parameter Learning
 
 training.data <- training[,(names(training) %in% vars)]
-pdag.hc <- empty.graph(vars)
-pdag.mmhc <- bnlearn::mmhc(training.data)
-pdag.rsmax2 <- bnlearn::rsmax2(training.data)
+dag.hc <- empty.graph(vars)
+dag.mmhc <- bnlearn::mmhc(training.data)
+dag.rsmax2 <- bnlearn::rsmax2(training.data)
 
 # Specify the arcs in the PDAG based on the hill-climbing stress tests
-arcs(pdag.hc) <- matrix(c('old', 'new', 'old', 'road.proximity', 'old', 'med.hhold.income', 'road.proximity', 'new', 'med.hhold.income', 'new', 'med.hhold.income', 'road.proximity', 'med.hhold.income', 'rec.area.proximity', 'rec.area.proximity', 'road.proximity'),
+arcs(dag.hc) <- matrix(c('old', 'new', 'old', 'road.proximity', 'old', 'med.hhold.income', 'rec.area.proximity', 'road.proximity', 'road.proximity', 'new', 'med.hhold.income', 'new', 'med.hhold.income', 'road.proximity', 'med.hhold.income', 'rec.area.proximity'),
                         ncol=2, byrow=TRUE, dimnames = list(NULL, c("from", "to")))
-plot(pdag.hc)
+
+plot(dag.hc); title('Composite Network from Hill-Climbing Tests')
+plot(dag.mmhc); title('Network Learned by Hybrid Constraint and Scoring Algorithms')
 
 # How do the two learned model structures compare?
-score(pdag.hc, data=training.data)
-score(pdag.mmhc, data=training.data)
+score(dag.hc, data=training.data)
+score(dag.mmhc, data=training.data)
+
+fitted.hc <- bn.fit(dag.hc, data=training.data)
+fitted.mmhc <- bn.fit(dag.mmhc, data=training.data)
 
 
 

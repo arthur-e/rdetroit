@@ -125,13 +125,6 @@ rec.area.proximity <- raster::raster(paste0(file.loc,
 # Distance to primary roads
 road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity_cut.tiff'))
 
-# TEMPORARY: Create a smaller sample
-# ext <- bbox(dev2000)
-# cropper <- raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.25,
-#                           ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.25)
-# dev2000 <- raster::crop(dev2000, cropper)
-# dev2006 <- raster::crop(dev2006, cropper)
-
 # =========================================
 # Spatially Join Land Cover and Other Data
 
@@ -163,9 +156,6 @@ training <- na.omit(cbind(data.frame(old=as.data.frame(dev2000, xy=TRUE)$layer,
                                      new=as.data.frame(dev2006, xy=TRUE)$layer),
                           attr2006, rec.proximities, road.proximities))
 
-save(training, file='rda/training.rda')
-load(file='rda/training.rda')
-
 # Correct error in type coercion; should be numeric not integer
 training$pop.density <- as.numeric(training$pop.density)
 training$med.hhold.income <- as.numeric(training$med.hhold.income)
@@ -175,31 +165,43 @@ training$med.hhold.income <- as.numeric(training$med.hhold.income)
 dim(training[training$old != training$new,])[1]
 
 # Clean-up
-remove(ext, cropper, rast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
+remove(rrast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
        devp2000, devp2006, rec.area.proximity, rec.proximities,
        road.proximity, road.proximities)
 
 save(training, file='rda/training.rda')
+load(file='rda/training.rda')
 
 #=======================
 # Discretizing the Data
 
-require(ggplot2)
-ggplot(data=melt(training, id.vars='FIPS'), mapping=aes(x=value, group=variable)) +
-  geom_histogram() +
-  facet_wrap(~ variable, scales='free')
-
 cases <- data.frame(t(combn(setdiff(colnames(training), c('new', 'FIPS')), 2)))
 
 require(plyr)
-cases <- ddply(cases, ~ X1 + X2, mutate,
+corrs <- ddply(cases, ~ X1 + X2, mutate,
       r.sq=cor.test(training[,X1], training[,X2], method='pearson')$estimate,
       p.value=cor.test(training[,X1], training[,X2], method='pearson')$p.value)
 
-subset(cases, abs(r.sq) > 0.5)
-vars <- c('old', 'new', 'road.proximity', 'owner.occupied', 'rec.area.proximity',
+save(corrs, file='rda/correlationTests.rda')
+load(file='rda/correlationTests.rda')
 
-summary(training.data)
+subset(corrs, abs(r.sq) > 0.5)
+
+# 2014-11-22
+# We have to include the following variables: old, new.
+# Valid combinations of variables seem to be: [fam.hholds | married.hholds] & [med.hhold.income | owner.occupied | poor.pop | occupied.housing] & [pop.density] & [rec.area.proximity] & [male.pop | female.pop] & [road.proximity | old]
+# road.proximity is correlated with old at an r^2 of -0.51
+
+subset(corrs, X1=='old' | X2=='old')
+subset(corrs, X1=='rec.area.proximity' | X2=='rec.area.proximity')
+subset(corrs, X1=='road.proximity' | X2=='road.proximity')
+
+vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
+
+# So, we discard road.proximity
+training.data <- subset(training, select=vars)
+vars <- c('new', names(dedup(training.data, 0.5)))
+
 #bnlearn::discretize(training.data, breaks=c(3, 3, 2,
 
 # ===================================

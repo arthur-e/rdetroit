@@ -201,8 +201,12 @@ vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'married.hholds'
 # So, we discard road.proximity
 training.data <- subset(training, select=vars)
 vars <- c('new', names(dedup(training.data, 0.5)))
+training.data <- subset(training, select=vars)
 
-#bnlearn::discretize(training.data, breaks=c(3, 3, 2,
+training.discrete <- cbind(apply(training.data[,1:2], 2, as.factor),
+                           bnlearn::discretize(training.data[,3:length(vars)],
+                                               breaks=rep(2, length(vars) - 2),
+                                               method='quantile'))
 
 # ===================================
 # Training the Bayesian Network (BN)

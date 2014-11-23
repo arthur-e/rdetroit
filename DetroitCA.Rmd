@@ -65,17 +65,14 @@ save(dev2001, dev2006, file='rda/caAggregates.rda')
 plot(dev2001); title('2001 Development Intensity at 300 meters')
 ```
 
+## Landscape and Census Data
+
 We'll grab the other spatial data we created when training the Bayesian network.
 
 ```{r}
 file.loc <- '/home/arthur/Workspace/TermProject/'
 load(file='rda/spatialMeasures.rda')
 load(file='rda/caAggregates.rda') # Replace dev2001 and dev2006 with aggregated
-
-devp2001 <- SpatialPoints(as.data.frame(dev2001, xy=TRUE)[,1:2],
-                          proj4string=crs(attr2000))
-devp2006 <- SpatialPoints(as.data.frame(dev2006, xy=TRUE)[,1:2],
-                          proj4string=crs(attr2006))
 
 # Recreation and outdoor areas
 rec.area.dist <- raster::raster(paste0(file.loc,
@@ -97,9 +94,15 @@ for (var in vars) {
 }
 
 layers <- stack(layers)
+
+remove(var, vars, rec.area.dist, roads.dist)
 ```
 
+# Examining the Network
 
+```{r}
+load(file='rda/graphs.rda')
+```
 
 
 

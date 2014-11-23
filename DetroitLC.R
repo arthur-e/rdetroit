@@ -129,7 +129,7 @@ road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity_cut
 # Spatially Join Land Cover and Other Data
 
 # Raster and vector layers have just SLIGHTLY different projection definitions...
-# require(rgdal)
+require(rgdal)
 attr2000 <- sp::spTransform(attr2000, raster::crs(dev2001))
 attr2006 <- sp::spTransform(attr2006, raster::crs(dev2001))
 

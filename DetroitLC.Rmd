@@ -178,8 +178,6 @@ gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp 
 
 From [U.S. 2010: Discover America in a New Century](http://www.s4.brown.edu/us2010/Researcher/ltdb3.htm): "The crosswalk identifies what portion of a tract in one year should be allocated to a 2010 tract. For every decennial year from 1970 to 2000, every row in the crosswalk lists a 2010 tract ID, the ID of a tract in the source year that contributes to it, and the share of the source tract's population attributes that should be allocated to the 2010 tract. In cases where there is an exact correspondence between the source tract and the 2010 tract, there is only one row of data for the 2010 tract. Otherwise there are as many rows as there are contributing tracts."
 
-Reference to use is: "John R. Logan, Zengwang Xu, and Brian Stults. 2012. “Interpolating US Decennial Census Tract Data from as Early as 1970 to 2010: A Longitudinal Tract Database” Professional Geographer, forthcoming."
-
 ## Interpolating 2000 Census Tracts to 2010 Census Tracts
 
 ```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
@@ -438,7 +436,9 @@ predict(quadmod, data.frame(n=seq(1, length(census.vars), by=1)))
 
 # References
 
-1. Scutari, M. (2014). bnlearn R Package Documentation. Retrieved November 12, 2014, from http://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf
+1. John R. Logan, Zengwang Xu, and Brian Stults. 2012. “Interpolating US Decennial Census Tract Data from as Early as 1970 to 2010: A Longitudinal Tract Database” Professional Geographer, forthcoming.
+2. Nagarajan, R., Scutari, M., & Lebre, S. (2013). Bayesian Networks in R. New York, New York, USA: Springer. Retrieved from http://link.springer.com/content/pdf/10.1007/978-1-4614-6446-4.pdf
+3. Scutari, M. (2014). bnlearn R Package Documentation. Retrieved November 12, 2014, from http://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf
 
 
 

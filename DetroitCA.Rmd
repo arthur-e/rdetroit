@@ -39,6 +39,10 @@ dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
 ```
 
 ```{r}
+plot(dev2001); title('2001 Development Intensity at 30 meters')
+```
+
+```{r}
 counties <- readOGR(paste0(file.loc, 'ancillary/co26_d00_select_nad83.shp'),
                     'co26_d00_select_nad83')
 counties <- spTransform(counties, crs(dev2000))
@@ -58,5 +62,44 @@ save(dev2001, dev2006, file='rda/caAggregates.rda')
 ```
 
 ```{r}
+plot(dev2001); title('2001 Development Intensity at 300 meters')
 ```
+
+We'll grab the other spatial data we created when training the Bayesian network.
+
+```{r}
+file.loc <- '/home/arthur/Workspace/TermProject/'
+load(file='rda/spatialMeasures.rda')
+load(file='rda/caAggregates.rda') # Replace dev2001 and dev2006 with aggregated
+
+devp2001 <- SpatialPoints(as.data.frame(dev2001, xy=TRUE)[,1:2],
+                          proj4string=crs(attr2000))
+devp2006 <- SpatialPoints(as.data.frame(dev2006, xy=TRUE)[,1:2],
+                          proj4string=crs(attr2006))
+
+# Recreation and outdoor areas
+rec.area.dist <- raster::raster(paste0(file.loc,
+                                       'ancillary/rec+outdoor_nad83_prox_cut.tiff'))
+rec.area.dist <- resample(rec.area.dist, dev2001)
+```
+
+Now we can stack what we have so far...
+
+```{r}
+vars <- c('married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
+layers <- as.list(1:length(vars))
+names(layers) <- vars
+layers$cover <- dev2001
+layers$rec.area.proximity <- rec.area.dist
+
+for (var in vars) {
+  layers[var] <- rasterize(attr2006, dev2006, var)
+}
+
+layers <- stack(layers)
+```
+
+
+
+
 

@@ -110,12 +110,12 @@ attr2006 <- merge(tracts, survey2006, by='FIPS')
 file.loc <- '/home/arthur/Workspace/TermProject/'
 
 require(raster)
-rast2000 <- raster::raster(paste0(file.loc, 'nlcd2001_nad83.tif'))
+rast2001 <- raster::raster(paste0(file.loc, 'nlcd2001_nad83.tif'))
 rast2006 <- raster::raster(paste0(file.loc, 'nlcd2006_nad83.tif'))
 reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                            c(20,23,1), c(23,24,2), c(24,99,0)),
                          byrow=TRUE, ncol=3)
-dev2000 <- raster::reclassify(rast2000, reclass.matrix, right=TRUE) # Intervals closed on right
+dev2001 <- raster::reclassify(rast2001, reclass.matrix, right=TRUE) # Intervals closed on right
 dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
 
 # Recreation and outdoor areas
@@ -130,29 +130,31 @@ road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity_cut
 
 # Raster and vector layers have just SLIGHTLY different projection definitions...
 # require(rgdal)
-attr2000 <- sp::spTransform(attr2000, raster::crs(dev2000))
-attr2006 <- sp::spTransform(attr2006, raster::crs(dev2000))
+attr2000 <- sp::spTransform(attr2000, raster::crs(dev2001))
+attr2006 <- sp::spTransform(attr2006, raster::crs(dev2001))
 
-devp2000 <- SpatialPoints(as.data.frame(dev2000, xy=TRUE)[,1:2],
+save(dev2001, dev2006, attr2000, attr2006, file='rda/spatialMeasures.rda')
+
+devp2001 <- SpatialPoints(as.data.frame(dev2001, xy=TRUE)[,1:2],
                           proj4string=crs(attr2000))
 devp2006 <- SpatialPoints(as.data.frame(dev2006, xy=TRUE)[,1:2],
                           proj4string=crs(attr2006))
 
 # Extract attributes by their location... This takes a long time (about 4 minutes for each)
-attr2000 <- sp::over(devp2000, attr2000)
+attr2000 <- sp::over(devp2001, attr2000)
 attr2006 <- sp::over(devp2006, attr2006)
 
 # Sample from the distance to roads layer
-road.proximities <- data.frame(road.proximity=extract(road.proximity, devp2000))
-rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity, devp2000))
+road.proximities <- data.frame(road.proximity=extract(road.proximity, devp2001))
+rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity, devp2001))
 
-save(road.proximities, rec.proximities, attr2000, attr2006, devp2000, devp2006,
-     file='rda/allData.rda')
-load(file='rda/allData.rda')
+save(road.proximities, rec.proximities, attr2000, attr2006, devp2001, devp2006,
+     file='rda/bnData.rda')
+load(file='rda/bnData.rda')
 
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled (Naive, but R leaves us with no choice)
 require(plyr)
-training <- na.omit(cbind(data.frame(old=as.data.frame(dev2000, xy=TRUE)$layer,
+training <- na.omit(cbind(data.frame(old=as.data.frame(dev2001, xy=TRUE)$layer,
                                      new=as.data.frame(dev2006, xy=TRUE)$layer),
                           attr2006, rec.proximities, road.proximities))
 
@@ -165,8 +167,8 @@ training$med.hhold.income <- as.numeric(training$med.hhold.income)
 dim(training[training$old != training$new,])[1]
 
 # Clean-up
-remove(rrast2000, rast2006, tracts, attr2000, attr2006, dev2000, dev2006,
-       devp2000, devp2006, rec.area.proximity, rec.proximities,
+remove(rrast2000, rast2006, tracts, attr2000, attr2006, dev2001, dev2006,
+       devp2001, devp2006, rec.area.proximity, rec.proximities,
        road.proximity, road.proximities)
 
 save(training, file='rda/training.rda')

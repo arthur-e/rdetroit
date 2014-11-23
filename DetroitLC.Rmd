@@ -9,7 +9,7 @@ The intent is to learn the major drivers of land cover change in the Detroit Met
 
 # Data Sources
 
-All dollar values were adjusted for inflation to 2010 values.
+All dollar values were adjusted for inflation to 2010 values. County boundaries used for subsetting data came from [the U.S. Census TIGER dataset](https://www.census.gov/geo/maps-data/data/cbf/cbf_counties.html).
 
 **Used in analysis:**
 * [2000 and 2010 Census tract boundaries](http://semcog.org/MapCatalog_Demographic.aspx) - SEMCOG
@@ -97,6 +97,8 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 12. Assess predictions of BN in the absence of a CA model.
   - If we need a CA model to drive land comver changes, use simple rules from the SLEUTH model to propagate year-to-year changes stochastically based on the conditional probabilities.
 13. Investigate the effect of monotonic changes in population density, medium household income, and (proportion) occupied housing on land cover.
+14. Check effects of scale on training the Bayesian network.
+  - Go back and train the network on the same data aggregated to 300 meters.
 
 ## Dependencies
 

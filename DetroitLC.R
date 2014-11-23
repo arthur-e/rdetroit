@@ -288,6 +288,9 @@ score(expert.dag, data=training.sample)
 fit.mmhc <- bn.fit(mmhc.dag, data=training.discrete, method='bayes')
 fit.expert <- bn.fit(expert.dag, data=training.discrete, method='bayes')
 
+save(mmhc.dag, expert.dag, fit.mmhc, fit.expert, training.discrete, file='rda/graphs.rda')
+load(file='rda/graphs.rda')
+
 
 
 

@@ -77,27 +77,26 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 
 1. Interpolate 2000 Census data to 2010 Census tract boundaries.
 2. Normalize 2000 Census and ACS 2006 measures.
-  - Other measures? Distance to roads?
-  - Slope?
-  - Distance to [recreation and open space?](ftp://ftp.semcog.org/outgoing/web/landuse/regrec.zip)
 3. Join census tract attributes to census tract boundaries.
-4. Rasterize census tracts to NLCD grid.
-5. Configure the Bayesian network's nodes; include land use drivers and future land use states (classes).
-6. Learn the Bayesian network structure.
+4. Project land cover and landscape measures to a common UTM projection (17N).
+  - Distance to roads (from Michigan roads layer via MiGDL)
+  - Distance to [recreation and open space](ftp://ftp.semcog.org/outgoing/web/landuse/regrec.zip)
+5. Calculate proximity to roads, proximity to recreation and open space.
+6. Reclassify land cover to open, low-intensity, and high-intensity development.
+7. Spatially join land cover data with census and landscape measures.
+8. Discretize the predictor data.
+9. Creating a training data subset.
+10. Learn the Bayesian network structure.
   - Compare learned network structure across constraint-based, score-based and hybrid structure learning algorithms.
   - Compare learned network structure for 2001 data (only) and 2006 data (only) using Bayes Information Criterion (`bnlearn::score()`).
   - Use random restarts and perturbation with the Hill Climbing algorithm to determine stability of learned and expert-specified network structures.
   - Learn network only on changed pixels from 2001 to 2006.
   - Construct random undirected graph.
   - Construct expert undirected graph.
-  - Complete graphs by learning on undirected graphs.
-7. Parameterize the nodes of the BN.
-8. Assess predictions of BN in the absence of a CA model.
-  - What is the nature of the BN predictions? Are they propagated from state variable observations?
-  - If so, can we use the BN in absence of a CA to predict transition probabilities for each pixel in 2006, 2011?
-  - Then, evaluate the effect of picking this threshold for each land cover class transition in 2006, 2011.
+11. Parameterize the nodes of the BN.
+12. Assess predictions of BN in the absence of a CA model.
   - If we need a CA model to drive land comver changes, use simple rules from the SLEUTH model to propagate year-to-year changes stochastically based on the conditional probabilities.
-9. Investigate the effect of monotonic changes in population density, medium household income, and (proportion) occupied housing on land cover.
+13. Investigate the effect of monotonic changes in population density, medium household income, and (proportion) occupied housing on land cover.
 
 ## Dependencies
 
@@ -178,23 +177,20 @@ Reference to use is: "John R. Logan, Zengwang Xu, and Brian Stults. 2012. “Int
 ```{r preamble, warning=FALSE, results=FALSE, message=FALSE}
 library(sp, raster)
 library(rgdal)
+library(plyr, reshape2)
+library(bnlearn)
+
+setwd('/usr/local/dev/rdetroit/')
+options(stringsAsFactors=FALSE)
 ```
 
 ```{r}
-setwd('/home/arthur/Downloads')
-options(stringsAsFactors=FALSE)
-
-census.vars <- c('SE_T003_001', 'SE_T093_001', 'SE_T155_001', 'SE_T156_001', 'SE_T156_002', 'SE_T004_002', 'SE_T005_002', 'SE_T005_003', 'SE_T014_002', 'SE_T014_003', 'SE_T014_005', 'SE_T020_001', 'SE_T020_002', 'SE_T020_003', 'SE_T020_005', 'SE_T020_006', 'SE_T020_008', 'SE_T020_009', 'SE_T025_001', 'SE_T185_004')
-acs.vars <- c('SE_T002_001', 'SE_T001_001', 'SE_T004_002', 'SE_T004_003', 'SE_T002_003', 'SE_T057_001', 'SE_T093_001', 'SE_T094_001', 'SE_T094_002', 'SE_T017_001', 'SE_T017_002', 'SE_T017_003', 'SE_T017_005', 'SE_T017_006', 'SE_T017_008', 'SE_T017_009', 'SE_T013_002', 'SE_T013_003', 'SE_T013_005', 'SE_T118_004')
-
-census2000 <- read.csv('census2000.csv', header=T, skip=1,
+census2000 <- read.csv('census_data/census2000.csv', header=T, skip=1,
                        colClasses=c('Geo_FIPS'='character')) # 2000 Census data
-acs2006.2010 <- read.csv('acs2006-2010.csv', header=T, skip=1,
-                       colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
-tracts <- union(census2000$Census.Tract, acs2006.2010$Census.Tract)
-
-require(plyr)
-xwalk <- arrange(read.csv('crosswalk_2000_2010.csv', colClasses=c('character', 'character')),
+acs2006.2010 <- read.csv('census_data/acs2006-2010.csv', header=T, skip=1,
+                         colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
+xwalk <- plyr::arrange(read.csv('census_data/crosswalk_2000_2010.csv',
+                                colClasses=c('character', 'character')),
                  trtid10) # 2000 to 2010 Crosswalk data
 xwalk <- within(xwalk, weight <- as.numeric(weight))
 
@@ -209,12 +205,11 @@ xwalk <- subset(xwalk, trtid00 %in% intersect(census2000$trtid00, xwalk$trtid00)
 # We interpolate the 2000 census tracts to 2010 census tracts by a weighted linear combination
 require(reshape2)
 temp <- melt(join(xwalk, census2000, by=c('trtid00')),
-            id.vars=c('trtid00', 'trtid10', 'weight'))
+             id.vars=c('trtid00', 'trtid10', 'weight'))
 temp <- within(temp, value <- value * weight) # Scale the census measures by Brown et al.'s weights
 
 # Recast 2010 census tracts as a sum of the 2000 census measures
-census2000.as.2010 <- within(dcast(temp, trtid10 ~ variable, fun.aggregate=sum, value.var='value'),
-                             Geo_FIPS <- trtid10)
+census2000.as.2010 <- within(dcast(temp, trtid10 ~ variable, fun.aggregate=sum, value.var='value'), Geo_FIPS <- trtid10)
 
 # For some reason, a couple of tracts in the ACS are not in the 2010 interpolation of the 2000 census
 disjoint.tracts <- union(setdiff(census2000.as.2010$Geo_FIPS, acs2006.2010$Geo_FIPS),
@@ -222,12 +217,17 @@ disjoint.tracts <- union(setdiff(census2000.as.2010$Geo_FIPS, acs2006.2010$Geo_F
 
 acs2006.2010 <- subset(acs2006.2010, !Geo_FIPS %in% disjoint.tracts)
 census2000.as.2010 <- subset(census2000.as.2010, !Geo_FIPS %in% disjoint.tracts)
+
+require(ggplot2)
+ggplot(data=melt(census2000.as.2010, id.vars=c('trtid10', 'Geo_FIPS')),
+                 mapping=aes(x=value, group=variable)) +
+  geom_histogram() +
+  facet_wrap(~ variable, scales='free')
 ```
 
 ## Normalizing Census Data
 
 ```{r}
-# Non-iterative normalization; normalizing constants are not updated
 survey2000 <- with(census2000.as.2010, data.frame(
   FIPS=Geo_FIPS,
   pop.density=SE_T003_001,
@@ -266,6 +266,9 @@ survey2006 <- with(acs2006.2010, data.frame(
   black.pop=SE_T013_003 / SE_T001_001, # Black population...total pop.
   asian.pop=SE_T013_005 / SE_T001_001, # Asian population...total pop.
   poor.pop=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
+
+# Clean-up
+remove(acs2006.2010, census2000, census2000.as.2010, temp)
 ```
 
 ## Joining Spatial and Attribute Data
@@ -273,7 +276,7 @@ survey2006 <- with(acs2006.2010, data.frame(
 ```{r}
 # Join census tract shapefiles and census measures
 require(rgdal)
-tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10_nad83.shp', 't10')
+tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10_nad83.shp', 't10_nad83')
 tracts$FIPS <- tracts$GEOID10
 tracts <- subset(tracts, select=c('FIPS'))
 
@@ -285,11 +288,14 @@ attr2006 <- merge(tracts, survey2006, by='FIPS')
 ## Land Cover Data Preparation
 
 ```{r data.management, message=FALSE}
-library(sp, raster, rgdal)
 file.loc <- '/home/arthur/Workspace/TermProject/'
 
 require(raster)
-rast <- raster::raster(paste0(file.loc, 'nlcd2006_nad83.tif'))
+rast2000 <- raster::raster(paste0(file.loc, 'nlcd2001_nad83.tif'))
+rast2006 <- raster::raster(paste0(file.loc, 'nlcd2006_nad83.tif'))
+
+plot(rast2000)
+plot(rast2006)
 ```
 
 Next, I reclassify the NLCD raster into three classes:
@@ -303,66 +309,23 @@ require(raster)
 reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                            c(20,23,1), c(23,24,2), c(24,99,0)),
                          byrow=TRUE, ncol=3)
-dev <- raster::reclassify(rast, reclass.matrix, right=TRUE) # Intervals closed on right
-
-# Create a smaller sample
-ext <- bbox(dev)
-dev <- raster::crop(dev, raster::raster(xmn=ext[1], xmx=ext[1] + (ext[3] - ext[1]) * 0.1,
-                                         ymn=ext[2], ymx=ext[2] + (ext[4] - ext[2]) * 0.1))
+dev2000 <- raster::reclassify(rast2000, reclass.matrix, right=TRUE) # Intervals closed on right
+dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
 ```
 
 ## Other Spatial Data Preparation
 
-### Distance to Recreation and Outdoor Areas
-
-Only if using the recreation areas as a binary map...
-
-```{r eval=FALSE}
-require(sp, raster)
+```{r}
+file.loc <- '/home/arthur/Workspace/TermProject/'
 
 # Recreation and outdoor areas
-rec.areas <- readOGR(paste0(file.loc, 'ancillary/semich_rec_and_outdoor_nad83.shp'),
-                     'semich_rec_and_outdoor_nad83')
+rec.area.proximity <- raster::raster(paste0(file.loc,
+                                            'ancillary/rec+outdoor_nad83_prox_cut.tiff'))
+plot(rec.area.proximity)
 
-# Raster and vector layers have just SLIGHTLY different projection definitions...
-rec.areas <- sp::spTransform(rec.areas, raster::crs(dev2000))
-
-# Subset to just those areas in the tri-county extent of interest
-rec.areas <- subset(rec.areas, COUNTY %in% c(125, 99, 163), select='TYPE')
-
-rec2000 <- sp::over(devp2000, rec.areas)
-
-# Reclassify the recreation area data to a binary map
-rec2000[is.na(rec2000)] <- 0
-rec2000$TYPE[rec2000$TYPE==8] <- 1
-names(rec2000) <- c('rec.area')
-
-# Again, the number of points is different in practice
-rec2006 <- data.frame(rec.area=matrix(nrow=dim(attr2006)[1], ncol=1)) # Copy
-rec2006 <- mutate(rec2006, rec.area=c(rec2000$rec.area, rep(NA, dim(attr2006)[1] - dim(rec2000)[1])))
-```
-
-## Spatial Join of Census Measures and Land Cover Data
-
-```{r}
-library(sp, raster, rgdal)
-# Match the projection of the land cover layer
-# attr2000 <- spTransform(attr2000, raster::crs(dev))
-
-# "Sample" the census data by the land cover grid; of course, due to package limitations the raster's value is not included in this "spatial join"
-devp <- raster::rasterToPoints(dev, spatial=TRUE)
-t2000 <- sp::over(devp, attr2000)
-
-# Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled
-# (Naive, but R leaves us with no choice)
-require(plyr)
-train2000 <- cbind(data.frame(cover=devp$layer), t2000)
-
-# Add class labels
-# train2000$cover <- factor(train2000$cover,
-#                           labels=c('undeveloped', 'low-development', 'high-development'))
-# cover2006$cover <- factor(cover2006$cover,
-#                           labels=c('undeveloped', 'low-development', 'high-development'))
+# Distance to primary roads
+road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity_cut.tiff'))
+plot(road.proximity)
 ```
 
 ## Configuring and Learning on the Bayesian Network
@@ -370,8 +333,7 @@ train2000 <- cbind(data.frame(cover=devp$layer), t2000)
 The conditional probability table (CPT) will be populated through learning by maximum likelihood estimation (MLE) after Kocabas and Dragicevic (2007).
 
 ```{r}
-vars <- c('cover', 'T003_001', 'T093_001', 'T156_001', 'T156_002', 'T020_002', 'T185_004')
-pdag2000 <- bnlearn::iamb(train2000[,(names(train2000) %in% vars[1:i])])
+load(file='rda/training.rda')
 ```
 
 ### Timing
@@ -383,17 +345,20 @@ require(bnlearn)
 l.params <- c()
 l.iamb <- c()
 l.fast.iamb <- c()
-vars <- c('cover', 'T003_001', 'T093_001', 'T155_001', 'T156_002', 'T025_013', 'T020_001', 'T020_002', 'T020_003', 'T025_006')
+vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
+training.data <- subset(training, select=vars)
+training.sample <- training.data[sample(nrow(training.data),
+                                        dim(training.data)[1]*0.05),]
 
 # Timings on a 64-bit Intel® Core™ i7-2600 CPU @ 3.40GHz × 8 with 7.8 GB memory
 for (i in seq(3, length(vars), by=1)) {
   for (j in c(1,2,3)) {
     ptm <- proc.time() # Start the clock!
-    pdag2000 <- bnlearn::iamb(train2000[,(names(train2000) %in% vars[1:i])])
+    pdag <- bnlearn::iamb(training.sample[,(names(training.sample) %in% vars[1:i])])
     i.elapsed <- proc.time() - ptm # Stop the clock
     
     ptm <- proc.time() # Start the clock!
-    pdag2000 <- bnlearn::fast.iamb(train2000[,(names(train2000) %in% vars[1:i])])
+    pdag <- bnlearn::fast.iamb(training.sample[,(names(training.sample) %in% vars[1:i])])
     fi.elapsed <- proc.time() - ptm # Stop the clock
     
     l.params <- c(l.params, length(vars[1:i]))
@@ -401,9 +366,12 @@ for (i in seq(3, length(vars), by=1)) {
     l.fast.iamb <- c(l.fast.iamb, as.numeric(fi.elapsed['elapsed']))
   }
 }
+
+save(l.params, l.fast.iamb, l.iamb, file='rda/docTimeComplexity.rda')
 ```
 
 ```{r}
+load(file='rda/docTimeComplexity.rda')
 par(mfrow=c(1,2))
 plot(l.params, l.fast.iamb, log='y', xlab='Number of parameters, N', ylab='log10 Time in seconds')
 title('Fast IAMB Network Learning')
@@ -439,14 +407,14 @@ ggplot() +
   theme(text=element_text(size=14))
 ```
 
-The quadratic model fits just slightly better than the exponential model, although this may be just because it has an extra parameter.
+The exponential model fits just slightly better than the quadratic model despite the latter having an extra parameter.
 
 ```{r}
 summary(quadmod)
 summary(expmod)
 ```
 
-We could use AIC to compare the two models but the difference is small and likely less than the critical difference required to be significant. The AIC for the exponential model is `{r} as.numeric((2 * 3) - 2*log(logLik(expmod)))`; for the quadratic model it is `{r} as.numeric((2 * 4) - 2*log(logLik(quadmod)))`. At the 95% confidence interval, these models are still very close, with the critical value from the chi-squared distribution being `{r} qchisq(p=0.95, df=1)/2` and the actual difference between the models being `{r} as.numeric((2 * 3) - 2*log(logLik(expmod))) - as.numeric((2 * 4) - 2*log(logLik(quadmod)))`.
+We could use AIC to compare the two models but the difference is small and likely less than the critical difference required to be significant. The AIC for the exponential model is `r as.numeric((2 * 3) - 2*log(logLik(expmod)))`; for the quadratic model it is `r as.numeric((2 * 4) - 2*log(logLik(quadmod)))`. At the 95% confidence interval, these models are still very close, with the critical value from the chi-squared distribution being `r qchisq(p=0.95, df=1)/2` and the actual difference between the models being `r as.numeric((2 * 3) - 2*log(logLik(expmod))) - as.numeric((2 * 4) - 2*log(logLik(quadmod)))`.
 
 In summary, there really isn't enough data to discriminate between them, so we're obliged to go with the quadratic time model as this is supported in the literature. The predictions show that we should be able to train a network with up to 20 parameters in under 10 seconds. Thus, any training that takes significantly longer than this amount of time is likely due to errors encountered by the learning algorithm, such as correlated root nodes.
 

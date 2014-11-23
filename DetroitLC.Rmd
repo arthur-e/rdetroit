@@ -125,8 +125,14 @@ ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" /usr/local/dev/rdetroit/shp/t10_
 The spatial data need to be transformed to a common projection, [NAD83 UTM zone 17N](http://spatialreference.org/ref/epsg/26917/).
 
 ```
-gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline /home/arthur/Workspace/TermProject/nlcd2001.tif /home/arthur/Workspace/TermProject/nlcd2001_nad83.tif
-gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline /home/arthur/Workspace/TermProject/nlcd2006.tif /home/arthur/Workspace/TermProject/nlcd2006_nad83.tif
+FILE_LOC=/home/arthur/Workspace/TermProject/
+gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline $FILE_LOC/nlcd2001.tif $FILE_LOC/nlcd2001_nad83.tif
+gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline $FILE_LOC/nlcd2006.tif $FILE_LOC/nlcd2006_nad83.tif
+
+wget http://www2.census.gov/geo/tiger/PREVGENZ/co/co00shp/co26_d00_shp.zip
+unzip co26_d00_shp.zip
+ogr2ogr -f "ESRI Shapefile" -s_srs "EPSG:4269" -t_srs "EPSG:4269" -where "COUNTY IN ('099', '125', '163')" $FILE_LOC/ancillary/co26_d00_select.shp $FILE_LOC/ancillary/co26_d00.shp
+ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" $FILE_LOC/ancillary/co26_d00_select_nad83.shp $FILE_LOC/ancillary/co26_d00_select.shp
 ```
 
 ### Distance to Recreation and Outdoor Areas
@@ -232,15 +238,15 @@ survey2000 <- with(census2000.as.2010, data.frame(
   FIPS=Geo_FIPS,
   pop.density=SE_T003_001,
   med.hhold.income=SE_T093_001,
-  occupied.housing=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
-  owner.occupied=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
+  occupied.housing=SE_T156_001 / SE_T155_001, # Occupied housing units norm. by housing unit count
+  owner.occupied=SE_T156_002 / SE_T155_001, # Owner-occupied units...by housing unit count
   hholds=SE_T020_001 / SE_T004_002, # Households...by land area
   fam.hholds=SE_T020_002 / SE_T004_002, # Family households...by land area
   married.hholds=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
-  lone.male.hholds=SE_T020_005 / SE_T004_002, # Family -holds with lone male householder...by land area
-  lone.female.hholds=SE_T020_006 / SE_T004_002, # Family -holds with lone female householder...land area
-  male.nonfam.hholds=SE_T020_008 / SE_T004_002, # Non-family -holds with male householder...by land area
-  female.nonfam.hholds=SE_T020_009 / SE_T004_002, # Non-family -holds with female householder...land area
+  lone.male.hholds=SE_T020_005 / SE_T004_002, # Family -holds w/ lone male h-holder...by land area
+  lone.female.hholds=SE_T020_006 / SE_T004_002, # Fam. -holds w/ lone female h-holder...land area
+  male.nonfam.hholds=SE_T020_008 / SE_T004_002, # Non-fam. -holds w/ male h-holder...by land area
+  female.nonfam.hholds=SE_T020_009 / SE_T004_002, # Non-fam. -holds w/ female h-holder...land area
   male.pop=SE_T005_002 / SE_T025_001, # Male population normalized by total population
   female.pop=SE_T005_003 / SE_T025_001, # Female population normalized by total pop.
   white.pop=SE_T014_002 / SE_T025_001, # White population...total pop.
@@ -251,15 +257,15 @@ survey2006 <- with(acs2006.2010, data.frame(
   FIPS=Geo_FIPS,
   pop.density=SE_T002_001,
   med.hhold.income=SE_T057_001,
-  occupied.housing=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
-  owner.occupied=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
+  occupied.housing=SE_T094_001 / SE_T093_001, # Occupied housing units norm. by housing unit count
+  owner.occupied=SE_T094_002 / SE_T093_001, # Owner-occupied units norm. by housing unit count
   hholds=SE_T017_001 / SE_T002_003, # Households...by land area
   fam.hholds=SE_T017_002 / SE_T002_003, # Family households...by land area
   married.hholds=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
-  lone.male.hholds=SE_T017_005 / SE_T002_003, # Family -holds with lone male householder...by land area
-  lone.female.hholds=SE_T017_006 / SE_T002_003, # Family -holds with lone female householder...land area
-  male.nonfam.hholds=SE_T017_008 / SE_T002_003, # Non-family -holds with male householder...by land area
-  female.nonfam.hholds=SE_T017_009 / SE_T002_003, # Non-family -holds with female householder...land area
+  lone.male.hholds=SE_T017_005 / SE_T002_003, # Family -holds w/ lone male h-holder...by land area
+  lone.female.hholds=SE_T017_006 / SE_T002_003, # Fam. -holds w/ lone female h-holder...land area
+  male.nonfam.hholds=SE_T017_008 / SE_T002_003, # Non-fam. -holds w/ male h-holder...by land area
+  female.nonfam.hholds=SE_T017_009 / SE_T002_003, # Non-fam. -holds w/ female h-holder...land area
   male.pop=SE_T004_002 / SE_T001_001, # Male population normalized by total population
   female.pop=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
   white.pop=SE_T013_002 / SE_T001_001, # White population...total pop.

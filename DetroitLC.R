@@ -56,15 +56,15 @@ survey2000 <- with(census2000.as.2010, data.frame(
   FIPS=Geo_FIPS,
   pop.density=SE_T003_001,
   med.hhold.income=SE_T093_001,
-  occupied.housing=SE_T156_001 / SE_T155_001, # Occupied housing units normalized by housing unit count
-  owner.occupied=SE_T156_002 / SE_T155_001, # Owner-occupied units normalized by housing unit count
+  occupied.housing=SE_T156_001 / SE_T155_001, # Occupied housing units norm. by housing unit count
+  owner.occupied=SE_T156_002 / SE_T155_001, # Owner-occupied units...by housing unit count
   hholds=SE_T020_001 / SE_T004_002, # Households...by land area
   fam.hholds=SE_T020_002 / SE_T004_002, # Family households...by land area
   married.hholds=SE_T020_003 / SE_T004_002, # Married-couple households...by land area
-  lone.male.hholds=SE_T020_005 / SE_T004_002, # Family -holds with lone male householder...by land area
-  lone.female.hholds=SE_T020_006 / SE_T004_002, # Family -holds with lone female householder...land area
-  male.nonfam.hholds=SE_T020_008 / SE_T004_002, # Non-family -holds with male householder...by land area
-  female.nonfam.hholds=SE_T020_009 / SE_T004_002, # Non-family -holds with female householder...land area
+  lone.male.hholds=SE_T020_005 / SE_T004_002, # Family -holds w/ lone male h-holder...by land area
+  lone.female.hholds=SE_T020_006 / SE_T004_002, # Fam. -holds w/ lone female h-holder...land area
+  male.nonfam.hholds=SE_T020_008 / SE_T004_002, # Non-fam. -holds w/ male h-holder...by land area
+  female.nonfam.hholds=SE_T020_009 / SE_T004_002, # Non-fam. -holds w/ female h-holder...land area
   male.pop=SE_T005_002 / SE_T025_001, # Male population normalized by total population
   female.pop=SE_T005_003 / SE_T025_001, # Female population normalized by total pop.
   white.pop=SE_T014_002 / SE_T025_001, # White population...total pop.
@@ -75,15 +75,15 @@ survey2006 <- with(acs2006.2010, data.frame(
   FIPS=Geo_FIPS,
   pop.density=SE_T002_001,
   med.hhold.income=SE_T057_001,
-  occupied.housing=SE_T094_001 / SE_T093_001, # Occupied housing units normalized by housing unit count
-  owner.occupied=SE_T094_002 / SE_T093_001, # Owner-occupied units normalized by housing unit count
+  occupied.housing=SE_T094_001 / SE_T093_001, # Occupied housing units norm. by housing unit count
+  owner.occupied=SE_T094_002 / SE_T093_001, # Owner-occupied units norm. by housing unit count
   hholds=SE_T017_001 / SE_T002_003, # Households...by land area
   fam.hholds=SE_T017_002 / SE_T002_003, # Family households...by land area
   married.hholds=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
-  lone.male.hholds=SE_T017_005 / SE_T002_003, # Family -holds with lone male householder...by land area
-  lone.female.hholds=SE_T017_006 / SE_T002_003, # Family -holds with lone female householder...land area
-  male.nonfam.hholds=SE_T017_008 / SE_T002_003, # Non-family -holds with male householder...by land area
-  female.nonfam.hholds=SE_T017_009 / SE_T002_003, # Non-family -holds with female householder...land area
+  lone.male.hholds=SE_T017_005 / SE_T002_003, # Family -holds w/ lone male h-holder...by land area
+  lone.female.hholds=SE_T017_006 / SE_T002_003, # Fam. -holds w/ lone female h-holder...land area
+  male.nonfam.hholds=SE_T017_008 / SE_T002_003, # Non-fam. -holds w/ male h-holder...by land area
+  female.nonfam.hholds=SE_T017_009 / SE_T002_003, # Non-fam. -holds w/ female h-holder...land area
   male.pop=SE_T004_002 / SE_T001_001, # Male population normalized by total population
   female.pop=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
   white.pop=SE_T013_002 / SE_T001_001, # White population...total pop.
@@ -282,6 +282,7 @@ plot(expert.dag); title('Specified Network')
 score(mmhc.dag, data=training.discrete)
 score(expert.dag, data=training.discrete)
 
+# Here, the training samples are those pixels that changed only
 score(mmhc.dag, data=training.sample)
 score(expert.dag, data=training.sample)
 

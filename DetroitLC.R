@@ -198,71 +198,70 @@ subset(corrs, X1=='road.proximity' | X2=='road.proximity')
 
 vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
 
+training.data <- subset(training, select=vars)
+
+# If necessary (because R's save() changed the column data types)
+training.data <- transform(training.data,
+                           med.hhold.income=as.numeric(med.hhold.income),
+                           pop.density=as.numeric(pop.density))
+
 # So, we discard road.proximity
-training.data <- subset(training, select=vars)
 vars <- c('new', names(dedup(training.data, 0.5)))
-training.data <- subset(training, select=vars)
+training.data <- subset(training.data, select=vars)
 
 training.discrete <- cbind(apply(training.data[,1:2], 2, as.factor),
                            bnlearn::discretize(training.data[,3:length(vars)],
                                                breaks=rep(2, length(vars) - 2),
                                                method='quantile'))
 
+remove(cases, training)
+
 # ===================================
 # Training the Bayesian Network (BN)
 
-# I removed the "owner.occupied" variable because in IAMB structure learning it caused a massive number of interconnections between nodes to be formed.
+# Creating a random sample...
+training.sample <- training.discrete[sample(nrow(training.discrete),
+                                            dim(training.discrete)[1]*0.05),]
 
-vars <- c('old', 'new', 'pop.density', 'med.hhold.income', 'occupied.housing',
-          'fam.hholds', 'poor.pop', 'rec.area.proximity', 'road.proximity')
+plot(bnlearn::iamb(training.sample));title('IAMB')
+plot(bnlearn::hc(training.sample));title('Hill-Climbing')
+plot(bnlearn::tabu(training.sample));title('Tabu Scoring')
+plot(bnlearn::mmhc(training.sample));title('Max-Min Hill Climbing')
+plot(bnlearn::rsmax2(training.sample));title('RSMAX2')
 
-# 2014-11-18
-# IAMB and GS produced the same graph; MMHC and RSMAX2 produced another, same graph. Hill Climbing and Tabu Search each produced a different graph from all the other methods.
-# Random restart tests with the Hill Climbing algorithm suggest the directionality between fam.hholds and both poor.pop and cover is highly uncertain. The alternatives (poor.pop -> fam.hholds -> cover) and (poor.pop <- fam.hholds <- cover) are also disputed (and the only dispute) between the Tabu Search and Hill Climbing methods, respectively. All the hybrid and constraint-based methods learned a (fam.hholds -> poor.pop) relationship.
+# 2014-11-23
+# All of the network learning approaches produce a complete or near-complete graph when trained on the full dataset, subset by independent factors, or a random sample thereof. Worse still, no nodes have arcs directed towards new land cover.
 
-# 2014-11-18
-# When using only 2000-2001 or 2006 data to train the network, the structure learned with IAMB or MMHC is very similar between 2000-2001 and 2006. The only difference in the learned network structures is in that of the IAMB method, which found some connection between cover and both fam.hholds and occupied.housing in 2000-2001 but not in 2006. Also, MMHC found directionality between all nodes in both years while IAMB could not determine directionality.
-
-# 2014-11-21
-# The network learning algorithms suggested that only road.proximity, rec.area.proximity, and med.hhold.income were consistently connected to old and new land cover. I believe that population density has to be a big factor so I'm keeping it in.
-
-vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'med.hhold.income', 'pop.density')
-plot(bnlearn::hc(training[,(names(training) %in% vars)], restart=1));title('Hill-Climbing')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
+dim(training.discrete[training.discrete$old != training.discrete$new,])[1]
+training.sample <- subset(training.discrete, !old == new)
+plot(bnlearn::hc(training.sample, restart=1));title('Hill-Climbing')
+plot(bnlearn::hc(training.sample,
                  restart=5));title('Hill-Climbing; Restarts=5')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
+plot(bnlearn::hc(training.sample,
                  restart=10));title('Hill-Climbing; Restarts=10')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
+plot(bnlearn::hc(training.sample,
                  restart=20));title('Hill-Climbing; Restarts=20')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
+plot(bnlearn::hc(training.sample,
                  restart=10, perturb=5));title('Hill-Climbing; Restarts=10, Perturbations=5')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
+plot(bnlearn::hc(training.sample,
                  restart=20, perturb=10));title('Hill-Climbing; Restarts=20, Perturbations=10')
+plot(bnlearn::rsmax2(training.sample));title('Learned by RSMAX2')
+plot(bnlearn::mmhc(training.sample));title('Learned by Max-Min Hill Climbing')
 
-plot(bnlearn::mmhc(training[,(names(training) %in% vars)]));title('MMHC')
-plot(bnlearn::rsmax2(training[,(names(training) %in% vars)]));title('RSMAX2')
+# 2014-11-23
+# When the data are trained on just that subset of pixels which have changed between 2001 and 2006, the graphs that are learned are still dense but the two hybrid algorithms produce a less dense graph that they agree on completely.
 
-# 2014-11-21
-# Hill climbing stress tests revealed a complex and unstable structure but the hybrid algorithms agree 100% as to the network structure and both find it complete and totally without any interactions including the pop.density variable.
+# Old land cover less developed than new? (Increasing development intensity)
+training.sample <- subset(training.discrete, ((old==0 | old==1) & new==2) |
+                            (old==0 & (new==1 | new==2)))
+plot(bnlearn::mmhc(training.sample));title('Old < New; Learned by Max-Min Hill Climbing')
+plot(bnlearn::rsmax2(training.sample));title('Old < New; Learned by RSMAX2')
 
-vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'med.hhold.income')
-plot(bnlearn::hc(training[,(names(training) %in% vars)], restart=1));title('Hill-Climbing')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
-                 restart=5));title('Hill-Climbing; Restarts=5')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
-                 restart=10));title('Hill-Climbing; Restarts=10')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
-                 restart=20));title('Hill-Climbing; Restarts=20')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
-                 restart=10, perturb=5));title('Hill-Climbing; Restarts=10, Perturbations=5')
-plot(bnlearn::hc(training[,(names(training) %in% vars)],
-                 restart=20, perturb=10));title('Hill-Climbing; Restarts=20, Perturbations=10')
+# New land cover less developed than old? (Decreasing development intensity)
+# There are only 16 such pixels...
+dim(subset(training.discrete, ((old==1 | old==2) & new==0) | (new==1 & old==2))[1])
 
-plot(bnlearn::mmhc(training[,(names(training) %in% vars)]));title('MMHC')
-plot(bnlearn::rsmax2(training[,(names(training) %in% vars)]));title('RSMAX2')
-
-# 2014-11-21
-# Hill climbing stress tests without the pop.density variable reveal a more consistent and realistic structure. Again, the same network emerged from the two hybrid learning algorithms. I will try two versions of the learned network: A composite of the stochastic hill climbing efforts and the network that emerged from the two hyrbid approaches.
+# Now let's think about specifying an "expert" network structure...
 
 #====================
 # Parameter Learning

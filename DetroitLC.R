@@ -230,7 +230,7 @@ plot(bnlearn::mmhc(training.sample));title('Max-Min Hill Climbing')
 plot(bnlearn::rsmax2(training.sample));title('RSMAX2')
 
 # 2014-11-23
-# All of the network learning approaches produce a complete or near-complete graph when trained on the full dataset, subset by independent factors, or a random sample thereof. Worse still, no nodes have arcs directed towards new land cover.
+# All of the network learning approaches produce a complete or near-complete graph when trained on the full dataset, subset by independent factors, or a random sample thereof. Worse still, no nodes have arcs directed towards new land cover. The complete graph can also be demonstrated to be inferior as it has a higher BIC relative to the more sparse, expert graph.
 
 dim(training.discrete[training.discrete$old != training.discrete$new,])[1]
 training.sample <- subset(training.discrete, !old == new)
@@ -248,6 +248,12 @@ plot(bnlearn::hc(training.sample,
 plot(bnlearn::rsmax2(training.sample));title('Learned by RSMAX2')
 plot(bnlearn::mmhc(training.sample));title('Learned by Max-Min Hill Climbing')
 
+mmhc.dag <- bnlearn::mmhc(training.sample)
+
+# We'll reverse the direction of just the pop.density <- new arc
+mmhc.dag <- set.arc(mmhc.dag, 'pop.density', 'new')
+plot(mmhc.dag); title('Learned by Max-Min Hill Climbing; Revised by Expert')
+
 # 2014-11-23
 # When the data are trained on just that subset of pixels which have changed between 2001 and 2006, the graphs that are learned are still dense but the two hybrid algorithms produce a less dense graph that they agree on completely.
 
@@ -262,28 +268,25 @@ plot(bnlearn::rsmax2(training.sample));title('Old < New; Learned by RSMAX2')
 dim(subset(training.discrete, ((old==1 | old==2) & new==0) | (new==1 & old==2))[1])
 
 # Now let's think about specifying an "expert" network structure...
+spec <- matrix(c('old', 'new', 'old', 'pop.density', 'old', 'rec.area.proximity', 'male.pop', 'married.hholds', 'pop.density', 'new', 'med.hhold.income', 'pop.density', 'med.hhold.income', 'new', 'married.hholds', 'med.hhold.income', 'married.hholds', 'new', 'rec.area.proximity', 'new', 'rec.area.proximity', 'pop.density', 'rec.area.proximity', 'med.hhold.income'),
+               ncol=2, byrow=TRUE)
+
+expert.dag <- empty.graph(names(training.discrete))
+arcs(expert.dag) <- spec
+plot(expert.dag); title('Specified Network')
 
 #====================
 # Parameter Learning
 
-training.data <- training[,(names(training) %in% vars)]
-dag.hc <- empty.graph(vars)
-dag.mmhc <- bnlearn::mmhc(training.data)
-dag.rsmax2 <- bnlearn::rsmax2(training.data)
-
-# Specify the arcs in the PDAG based on the hill-climbing stress tests
-arcs(dag.hc) <- matrix(c('old', 'new', 'old', 'road.proximity', 'old', 'med.hhold.income', 'rec.area.proximity', 'road.proximity', 'road.proximity', 'new', 'med.hhold.income', 'new', 'med.hhold.income', 'road.proximity', 'med.hhold.income', 'rec.area.proximity'),
-                        ncol=2, byrow=TRUE, dimnames = list(NULL, c("from", "to")))
-
-plot(dag.hc); title('Composite Network from Hill-Climbing Tests')
-plot(dag.mmhc); title('Network Learned by Hybrid Constraint and Scoring Algorithms')
-
 # How do the two learned model structures compare?
-score(dag.hc, data=training.data)
-score(dag.mmhc, data=training.data)
+score(mmhc.dag, data=training.discrete)
+score(expert.dag, data=training.discrete)
 
-fitted.hc <- bn.fit(dag.hc, data=training.data)
-fitted.mmhc <- bn.fit(dag.mmhc, data=training.data)
+score(mmhc.dag, data=training.sample)
+score(expert.dag, data=training.sample)
+
+fit.mmhc <- bn.fit(mmhc.dag, data=training.discrete, method='bayes')
+fit.expert <- bn.fit(expert.dag, data=training.discrete, method='bayes')
 
 
 

@@ -80,34 +80,68 @@ rec.area.dist <- raster::raster(paste0(file.loc,
 rec.area.dist <- resample(rec.area.dist, dev2001)
 ```
 
-Now we can stack what we have so far...
+## Rasterizing
 
 ```{r}
 vars <- c('married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
 layers <- as.list(1:length(vars))
 names(layers) <- vars
-layers$cover <- dev2001
+layers$old <- as.factor(dev2001)
 layers$rec.area.proximity <- rec.area.dist
 
 for (var in vars) {
   layers[var] <- rasterize(attr2006, dev2006, var)
 }
 
-layers <- stack(layers)
-
 save(layers, file='rda/layers.rda')
 load(file='rda/layers.rda')
-
-# Clean-up
-remove(var, vars, rec.area.dist, roads.dist)
 ```
 
-Finally, we want to mask out the pixels outside of the census tracts.
+## Masking and Discretizing
+
+First, we want to mask out the pixels outside of the census tracts.
 
 ```{r}
-layers$cover <- mask(dev2001, layers$pop.density, maskvalue=NA)
+layers$old <- mask(dev2001, layers$pop.density, maskvalue=NA)
 layers$rec.area.proximity <- mask(layers$rec.area.proximity,
                                   layers$pop.density, maskvalue=NA)
+```
+
+Next, we must discretize all the census and landscape layers.
+
+```{r}
+load(file='rda/graphs.rda')
+
+# Create a reclass matrix from the levels
+vars <- c('rec.area.proximity', 'married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
+layer.levels <- list(rec.area.proximity=levels(training.discrete$rec.area.proximity),
+                     married.hholds=levels(training.discrete$married.hholds),
+                     med.hhold.income=levels(training.discrete$med.hhold.income),
+                     pop.density=levels(training.discrete$pop.density),
+                     male.pop=levels(training.discrete$male.pop))
+
+for (var in vars) {
+  # Split apart e.g. "(20.1,190]"
+  reclass.matrix <- sapply(levels(training.discrete[,var]),
+                           function (s) as.numeric(unlist(strsplit(gsub('\\[|\\]|\\(|\\)',
+                                                                        '', s), ','))))
+  reclass.matrix[1] <- 0
+  layers[var] <- raster::reclassify(get(var, layers),
+                                    cbind(reclass.matrix, c(0, 1)),
+                                    right=TRUE) # Intervals closed on right
+}
+```
+
+# Stacking
+
+```{r}
+layers <- stack(layers)
+
+save(layers, file='rda/layerStack.rda')
+load(file='rda/layerStack.rda')
+
+# Clean-up
+remove(var, vars, rec.area.dist, roads.dist, reclass.matrix)
 ```
 
 # Examining the Network
@@ -116,7 +150,12 @@ layers$rec.area.proximity <- mask(layers$rec.area.proximity,
 load(file='rda/graphs.rda')
 
 require(gRain)
+
+# We use the junction tree algorithm to create an independence network that we can query
 jtree <- compile(as.grain(fit.expert))
+
+vars <- c('married.hholds', 'med.hhold.income', 'pop.density', 'male.pop', 'old')
+foo <- setEvidence(jtree, nodes=vars, nslist=as.list(na.omit(getValues(layers, 1, 1))[1,]))
 ```
 
 

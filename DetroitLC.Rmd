@@ -94,10 +94,13 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
   - Construct random undirected graph.
   - Construct expert undirected graph.
 11. Parameterize the nodes of the BN.
-12. Assess predictions of BN in the absence of a CA model.
-  - If we need a CA model to drive land comver changes, use simple rules from the SLEUTH model to propagate year-to-year changes stochastically based on the conditional probabilities.
+12. Discretize the predictor variable layers.
 13. Investigate the effect of monotonic changes in population density, medium household income, and (proportion) occupied housing on land cover.
-14. Check effects of scale on training the Bayesian network.
+14. Evaluate best model's performance through three different training configurations:
+  - Combined 2001-2006 census and land cover observations
+  - Only changed 2001-2006 pixels.
+  - Reserving half of combined 2001-2006 data for out-of-fit prediction.
+15. Check effects of scale on training the Bayesian network.
   - Go back and train the network on the same data aggregated to 300 meters.
 
 ## Dependencies

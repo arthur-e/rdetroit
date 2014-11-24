@@ -95,13 +95,28 @@ for (var in vars) {
 
 layers <- stack(layers)
 
+save(layers, file='rda/layers.rda')
+load(file='rda/layers.rda')
+
+# Clean-up
 remove(var, vars, rec.area.dist, roads.dist)
+```
+
+Finally, we want to mask out the pixels outside of the census tracts.
+
+```{r}
+layers$cover <- mask(dev2001, layers$pop.density, maskvalue=NA)
+layers$rec.area.proximity <- mask(layers$rec.area.proximity,
+                                  layers$pop.density, maskvalue=NA)
 ```
 
 # Examining the Network
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 load(file='rda/graphs.rda')
+
+require(gRain)
+jtree <- compile(as.grain(fit.expert))
 ```
 
 

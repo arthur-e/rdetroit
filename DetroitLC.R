@@ -211,7 +211,8 @@ training.data <- transform(training.data,
 vars <- c('new', names(dedup(training.data, 0.5)))
 training.data <- subset(training.data, select=vars)
 
-training.discrete <- cbind(apply(training.data[,1:2], 2, as.factor),
+training.discrete <- cbind(data.frame(new=lapply(training.data$new, as.factor)),
+                           data.frame(old=lapply(training.data$old, as.factor)),
                            bnlearn::discretize(training.data[,3:length(vars)],
                                                breaks=rep(2, length(vars) - 2),
                                                method='quantile'))

@@ -104,6 +104,13 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 
 ```{r installation, eval=FALSE}
 install.packages(c('bnlearn', 'reshape2', 'plyr', 'ggplot2', 'sp', 'raster', 'rgdal'))
+
+# We have to use Bioconductor to install gRain dependencies
+source('http://bioconductor.org/biocLite.R')
+biocLite('graph')
+biocLite('RBGL')
+
+install.packages('gRain')
 ```
 
 ## Preparing a Common Coordinate Reference System

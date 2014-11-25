@@ -166,6 +166,9 @@ training$med.hhold.income <- as.numeric(training$med.hhold.income)
 # How many pixels changed from 2001 to 2006?
 dim(training[training$old != training$new,])[1]
 
+save(training, file='rda/training.rda')
+load(file='rda/training.rda')
+
 # Clean-up
 remove(rrast2000, rast2006, tracts, attr2000, attr2006, dev2001, dev2006,
        devp2001, devp2006, rec.area.proximity, rec.proximities,
@@ -208,11 +211,15 @@ training.data <- transform(training.data,
 vars <- c('new', names(dedup(training.data, 0.5)))
 training.data <- subset(training.data, select=vars)
 
+# Cannot discretize on the esalab computer! Don't do it! It always crashes.
 training.discrete <- cbind(data.frame(new=lapply(training.data$new, as.factor)),
                            data.frame(old=lapply(training.data$old, as.factor)),
                            bnlearn::discretize(training.data[,3:length(vars)],
                                                breaks=rep(2, length(vars) - 2),
                                                method='quantile'))
+
+save(training.data, training.discrete, file='rda/trainingData.rda')
+load(file='rda/trainingData.rda')
 
 remove(cases, training)
 
@@ -221,7 +228,7 @@ remove(cases, training)
 
 # Creating a random sample...
 training.sample <- training.discrete[sample(nrow(training.discrete),
-                                            dim(training.discrete)[1]*0.01),]
+                                        dim(training.discrete)[1]*0.01),]
 
 plot(bnlearn::iamb(training.sample));title('IAMB')
 plot(bnlearn::hc(training.sample));title('Hill-Climbing')

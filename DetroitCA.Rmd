@@ -120,12 +120,6 @@ load(file='rda/graphs.rda')
 
 # Create a reclass matrix from the levels
 vars <- c('rec.area.proximity', 'married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
-layer.levels <- list(rec.area.proximity=levels(training.discrete$rec.area.proximity),
-                     married.hholds=levels(training.discrete$married.hholds),
-                     med.hhold.income=levels(training.discrete$med.hhold.income),
-                     pop.density=levels(training.discrete$pop.density),
-                     male.pop=levels(training.discrete$male.pop))
-
 for (var in vars) {
   # Split apart e.g. "(20.1,190]"
   reclass.matrix <- sapply(levels(training.discrete[,var]),
@@ -159,9 +153,21 @@ layers
 # Examining the Network
 
 ```{r}
+# TODO An improvement would be to have the levels of the layers be in [0, 1, 2, ...]
+layer.levels <- list(rec.area.proximity=levels(training.discrete$rec.area.proximity),
+                     married.hholds=levels(training.discrete$married.hholds),
+                     med.hhold.income=levels(training.discrete$med.hhold.income),
+                     pop.density=levels(training.discrete$pop.density),
+                     male.pop=levels(training.discrete$male.pop))
+
 # A function to update the posterior probability distribution with evidence
 updateNetwork <- function (jtree, states) {
-  evidence <- transform(data.frame(na.omit(states)),
+  # Do not do anything if the input data are all NA
+  if (all(is.na(states))) {
+    return(jtree)
+  }
+  
+  evidence <- transform(states,
                      married.hholds=layer.levels$married.hholds[married.hholds + 1],
                      med.hhold.income=layer.levels$med.hhold.income[med.hhold.income + 1],
                      pop.density=layer.levels$pop.density[pop.density + 1],
@@ -226,4 +232,22 @@ querygrain(posterior, nodes='new')$new
 ```
 
 # Simulation
+
+```{r message=FALSE, warning=FALSE}
+load(file='rda/graphs.rda')
+load(file='rda/layerStack.rda')
+
+require(gRain)
+
+# We use the junction tree algorithm to create an independence network that we can query
+prior <- compile(as.grain(fit.expert))
+
+output <- raster::calc(layers, function (states) {
+  apply(states, 1, function (r) {
+    chooseOutcome(querygrain(updateNetwork(prior, as.data.frame(t(r))), nodes='new')$new)
+  })
+}, forcefun=TRUE)
+```
+
+
 

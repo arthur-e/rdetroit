@@ -171,9 +171,6 @@ remove(rrast2000, rast2006, tracts, attr2000, attr2006, dev2001, dev2006,
        devp2001, devp2006, rec.area.proximity, rec.proximities,
        road.proximity, road.proximities)
 
-save(training, file='rda/training.rda')
-load(file='rda/training.rda')
-
 #=======================
 # Discretizing the Data
 
@@ -224,7 +221,7 @@ remove(cases, training)
 
 # Creating a random sample...
 training.sample <- training.discrete[sample(nrow(training.discrete),
-                                            dim(training.discrete)[1]*0.05),]
+                                            dim(training.discrete)[1]*0.01),]
 
 plot(bnlearn::iamb(training.sample));title('IAMB')
 plot(bnlearn::hc(training.sample));title('Hill-Climbing')
@@ -281,6 +278,11 @@ plot(expert.dag); title('Specified Network')
 #====================
 # Parameter Learning
 
+# Creating a random sample...One way or the other
+training.sample <- training.discrete[sample(nrow(training.discrete),
+                                            dim(training.discrete)[1]*0.01),]
+#training.sample <- subset(training.discrete, !old == new)
+
 # How do the two learned model structures compare?
 score(mmhc.dag, data=training.discrete)
 score(expert.dag, data=training.discrete)
@@ -289,8 +291,8 @@ score(expert.dag, data=training.discrete)
 score(mmhc.dag, data=training.sample)
 score(expert.dag, data=training.sample)
 
-fit.mmhc <- bn.fit(mmhc.dag, data=training.discrete, method='bayes')
-fit.expert <- bn.fit(expert.dag, data=training.discrete, method='bayes')
+fit.mmhc <- bn.fit(mmhc.dag, data=training.sample, method='bayes')
+fit.expert <- bn.fit(expert.dag, data=training.sample, method='bayes')
 
 save(mmhc.dag, expert.dag, fit.mmhc, fit.expert, training.discrete, file='rda/graphs.rda')
 load(file='rda/graphs.rda')

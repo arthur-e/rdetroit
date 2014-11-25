@@ -19,6 +19,12 @@ setwd('/usr/local/dev/rdetroit/')
 options(stringsAsFactors=FALSE)
 ```
 
+# Methodology
+
+1. Aggregate and stack predictor variables as rasters.
+2. In a CA simulation...
+  - For each pixel, pick one of the land cover values based on its probability
+
 # Preparation
 
 ## Land Cover Data
@@ -152,16 +158,10 @@ layers
 
 # Examining the Network
 
-```{r message=FALSE, warning=FALSE}
-load(file='rda/graphs.rda')
-
-require(gRain)
-
-# We use the junction tree algorithm to create an independence network that we can query
-jtree <- compile(as.grain(fit.expert))
-
-updateNetwork <- function (nodes, states) {  
-  evidence <- transform(data.frame(na.omit(getValues(layers, 1, 1))),
+```{r}
+# A function to update the posterior probability distribution with evidence
+updateNetwork <- function (jtree, states) {
+  evidence <- transform(data.frame(na.omit(states)),
                      married.hholds=layer.levels$married.hholds[married.hholds + 1],
                      med.hhold.income=layer.levels$med.hhold.income[med.hhold.income + 1],
                      pop.density=layer.levels$pop.density[pop.density + 1],
@@ -172,8 +172,58 @@ updateNetwork <- function (nodes, states) {
   for (i in seq(1, dim(evidence)[1])) {
     jtree <- setEvidence(jtree, nodes=names(evidence), nslist=mapply(list, evidence[i,]))
   }
+  
+  jtree
+}
+
+# A function to choose outcomes, one at a time, with the same probability as the given posterior distribution
+chooseOutcome <- function (posterior) {
+  post <- as.numeric(posterior)
+  prob <- rep(0, length(post))
+  for (i in seq(length(post) - 1, 1, by=-1)) {
+    j <- length(post) - i
+    prob <- prob + c(rep(0, j), post[(j-1):(length(post)-j)])
+  }
+  
+  r <- runif(1)
+  for (i in seq(0, length(prob) - 2)) {
+    if (r < prob[i + 2]) {
+      return(i)
+    }
+  }
+  
+  (length(prob) - 1)
 }
 ```
 
+Does our function reproduce classes with the same proportion as in the probability distribution?
 
+```{r}
+foo <- as.numeric(querygrain(prior, nodes='new')$new)
+bar <- c()
+for (i in seq(1, 10000)) { bar <- c(bar, chooseOutcome(foo)) }
+unique(bar)
+c(length(bar[bar==0])/length(bar), length(bar[bar==1])/length(bar), length(bar[bar==2])/length(bar))
+foo
+```
+
+```{r message=FALSE, warning=FALSE}
+load(file='rda/graphs.rda')
+
+require(gRain)
+
+# We use the junction tree algorithm to create an independence network that we can query
+prior <- compile(as.grain(fit.expert))
+
+# Get the prior probabilities for new land cover
+querygrain(prior, nodes='new')$new
+
+# Update the posterior
+posterior <- updateNetwork(prior, getValues(layers, 1, 1))
+
+# Get the posterior probabilities for new land cover
+querygrain(posterior, nodes='new')$new
+```
+
+# Simulation
 

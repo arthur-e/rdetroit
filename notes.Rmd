@@ -1,0 +1,35 @@
+---
+title: "Notes"
+author: "K. Arthur Endsley"
+date: '2014-11-25'
+output: html_document
+---
+
+# Ongoing Work
+
+- Check that normalized values make sense.
+- Re-learn the network from discretized data???
+- Check CPTs for explanatory relationships that make sense.
+
+## Training
+
+### Training Sample Composition
+
+**November 25, 2014**
+I used a random 1% of the combined 2001-2006 data to train both the expert and the learned network.
+
+Next, I want to try:
+- Using a much higher proportion of the data to train the network.
+- 
+
+### Resolution of Training Data
+
+## Prediction
+
+### Expert versus Learned Network
+
+# Methods Used
+
+## Learning the Network Structure
+
+The network structure was learned using the complete 2001-2006 dataset. Most of the algorithms produced extremely dense graphs including complete graphs. Ultimately, the hybrid scoring and constraint algorithms, RSMAX2 and Max-Min Hill Climbing, produced the same network. The only change made to the learned network was reversing the directionality of the `pop.density` to `new` arc so that `new` was dependent on `pop.density`.

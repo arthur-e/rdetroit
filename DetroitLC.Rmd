@@ -438,10 +438,13 @@ In summary, there really isn't enough data to discriminate between them, so we'r
 predict(quadmod, data.frame(n=seq(1, length(census.vars), by=1)))
 ```
 
+# Improvements
+
+* In the discretization, the predictor variables should be discretized to factors that match those factors expected by the Bayesian Network. This will speed up predictions and allow for even multi-threaded prediction.
+
 # Questions
 
 * Can I do network learning in parallel with the `parallel` package and `makeCluster` (see Page 4, http://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf)?
-* What network learning algorithm is most efficient and produces the best results (or is the best trade-off between speed and accuracy)?
 * What census tract boundaries are used in the American Community Survey? \textbf{The 2010 tract boundaries are used.} [(Source)](http://www.census.gov/geo/maps-data/data/pdfs/tiger/How_do_I_choose_TIGER_vintage.pdf)
 
 # References

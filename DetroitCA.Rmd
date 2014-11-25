@@ -132,16 +132,22 @@ for (var in vars) {
 }
 ```
 
-# Stacking
+## Stacking
 
 ```{r}
 layers <- stack(layers)
 
-save(layers, file='rda/layerStack.rda')
+save(layers, layer.levels, file='rda/layerStack.rda')
 load(file='rda/layerStack.rda')
 
 # Clean-up
 remove(var, vars, rec.area.dist, roads.dist, reclass.matrix)
+```
+
+We can see from the min and max values in the following output that all of our layers have been discretized.
+
+```{r}
+layers
 ```
 
 # Examining the Network
@@ -154,8 +160,19 @@ require(gRain)
 # We use the junction tree algorithm to create an independence network that we can query
 jtree <- compile(as.grain(fit.expert))
 
-vars <- c('married.hholds', 'med.hhold.income', 'pop.density', 'male.pop', 'old')
-foo <- setEvidence(jtree, nodes=vars, nslist=as.list(na.omit(getValues(layers, 1, 1))[1,]))
+updateNetwork <- function (nodes, states) {  
+  evidence <- transform(data.frame(na.omit(getValues(layers, 1, 1))),
+                     married.hholds=layer.levels$married.hholds[married.hholds + 1],
+                     med.hhold.income=layer.levels$med.hhold.income[med.hhold.income + 1],
+                     pop.density=layer.levels$pop.density[pop.density + 1],
+                     male.pop=layer.levels$male.pop[male.pop + 1],
+                     rec.area.proximity=layer.levels$rec.area.proximity[rec.area.proximity + 1],
+                     old=as.character(old))
+  
+  for (i in seq(1, dim(evidence)[1])) {
+    jtree <- setEvidence(jtree, nodes=names(evidence), nslist=mapply(list, evidence[i,]))
+  }
+}
 ```
 
 

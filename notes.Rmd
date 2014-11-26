@@ -25,6 +25,7 @@ I used a random 1% of the combined 2001-2006 data to train both the expert and t
 **What does "out-of-fit" prediction mean in this context?** It would mean to train on the 2001-2006 data and make a prediction for 2011.
 
 With the "superior" model selected, I want to try:
+
 - Using only the 2001-2006 changed data to train the network.
 - Using a much higher proportion of the data to train the network.
 - Using finer discretization (more quantiles for each parameter).
@@ -34,6 +35,14 @@ With the "superior" model selected, I want to try:
 The predictor variables were aggregated to 300 meters to reduce the computational complexity.
 
 ### Expert versus Learned Network
+
+## Validation
+
+* Cross-tabulation
+* Cohen's Kappa
+* Class frequency
+* Class area per census tract
+* Clustering (compactness)
 
 # Background
 

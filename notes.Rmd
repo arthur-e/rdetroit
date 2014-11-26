@@ -32,8 +32,6 @@ With the "superior" model selected, I want to try:
 
 ## Prediction
 
-The predictor variables were aggregated to 300 meters to reduce the computational complexity.
-
 ### Expert versus Learned Network
 
 ## Validation
@@ -69,6 +67,12 @@ In addition to the learned network, an "expert" network was specified based on t
 ## Learning the Weights
 
 The Bayesian networks were trained from the high-resolution, 30-meter land cover data and landscape measures joined to the coarse-resolution census data. The random samples used to learn the network structure, score the network structure, and fit the model were distinct; a three-folds random sample was created for these purposes.
+
+## Prediction of 2006 and 2011 Land Cover
+
+The predictor variables were aggregated to 300 meters to reduce the computational complexity.
+
+One of the virtues of Bayesian networks is that predictions do not require a simultaneous observation of all predictor variables; even just one predictor variable can be used as evidence. This was essential for the 2011 land cover prediction as the 2010 U.S. Census data obtained did not include the "median household income" or "population poor or struggling" variables that were used to develop and train the network.
 
 # References
 

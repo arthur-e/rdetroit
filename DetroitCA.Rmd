@@ -251,10 +251,16 @@ prior.mmhc <- compile(as.grain(fit.mmhc))
 #   })
 # }, forcefun=TRUE)
 
-output <- stackApply(layers, rep(1, length(names(layers))), function (r, ...) {
+output.expert.2006 <- stackApply(layers, rep(1, length(names(layers))), function (r, ...) {
   chooseOutcome(querygrain(updateNetwork(prior.expert, as.data.frame(t(r))),
                            nodes='new')$new)
 })
+
+output.mmhc.2006 <- stackApply(layers, rep(1, length(names(layers))), function (r, ...) {
+  chooseOutcome(querygrain(updateNetwork(prior.mmhc, as.data.frame(t(r))),
+                           nodes='new')$new)
+})
+
 ```
 
 ```{r}

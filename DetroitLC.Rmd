@@ -20,53 +20,53 @@ All dollar values were adjusted for inflation to 2010 values. County boundaries 
 
 ## Potential SocialExplorer Census Measures
 
-Variable names are given in parentheses as (2000 Census, American Community Survey).
+Variable names are given in parentheses as (2000 Census, 2010 Census, American Community Survey).
 
-* Population density (`SE_T003_001`, `SE_T002_001`)
-* Median household income (`SE_T093_001`, `SE_T057_001`)
+* Population density (`T003_001`, `T002_002`, `T002_001`)
+* Median household income (`T093_001`, (None), `T057_001`)
 
-* Normalized by housing unit count (`SE_T155_001`, `SE_T093_001`)...
-  * Occupied housing units (`SE_T156_001`, `SE_T094_001`)
-  * Occupied housing units: owner occupied (`SE_T156_002`, `SE_T094_002`)
+* Normalized by housing unit count (`T155_001`, `T068_001`, `T093_001`)...
+  * Occupied housing units (`T156_001`, `T069_001`, `T094_001`)
+  * Occupied housing units: owner occupied (`T156_002`, `T069_002`, `T094_002`)
 
-* Normalized by land area (`SE_T004_002`, `SE_T002_003`)...
-  * Housing unit count (`SE_T155_001`, `SE_T093_001`)
-  * Households (`SE_T020_001`, `SE_T017_001`)
-  * Family households (`SE_T020_002`, `SE_T017_002`)
-  * Married-couple households (`SE_T020_003`, `SE_T017_003`)
-  * Family households with Male householder, no spouse present (`SE_T020_005`, `SE_T017_005`)
-  * Family households with Female householder, no spouse present (`SE_T020_006`, `SE_T017_006`)
-  * Non-family households with Male householder (`SE_T020_008`, `SE_T017_008`)
-  * Non-family households with Female householder (`SE_T020_009`, `SE_T017_009`)
+* Normalized by land area (`T004_002`, `T002_006`, `T002_003`)...
+  * Housing unit count (`T155_001`, `T068_001`, `T093_001`)
+  * Households (`T020_001`, `T058_001`, `T017_001`)
+  * Family households (`T020_002`, `T058_002`, `T017_002`)
+  * Married-couple households (`T020_003`, `T058_003`, `T017_003`)
+  * Family households with Male householder, no spouse present (`T020_005`, `T058_005`, `T017_005`)
+  * Family households with Female householder, no spouse present (`T020_006`, `T058_006`, `T017_006`)
+  * Non-family households with Male householder (`T020_008`, (None), `T017_008`)
+  * Non-family households with Female householder (`T020_009`, (None), `T017_009`)
   
-* Normalized by family household population (`SE_T025_003`, (None))...
-  * Householders (`SE_T025_004`, (None))
-  * Children in households (`SE_T025_006`, (None))
-  * Grandchildren in households (`SE_T025_007`, (None))
-  * Parents in households (`SE_T025_009`, (None))
-  * Non-relatives in households (`SE_T025_011`, (None))
+* Normalized by family household population (`T025_003`, `T063_003`, (None))...
+  * Householders (`T025_004`, `T063_004`, (None))
+  * Children in households (`T025_006`, `T063_006`, (None))
+  * Grandchildren in households (`T025_007`, `T063_007`, (None))
+  * Parents in households (`T025_009`, `T063_009`, (None))
+  * Non-relatives in households (`T025_011`, `T063_011`, (None))
   
-* Normalized by non-family household population (`SE_T025_012`, (None))...
-  * Population living alone (`SE_T025_013`, (None))
+* Normalized by non-family household population (`T025_012`, `T063_012`, (None))...
+  * Population living alone (`T025_013`, `T063_013`, (None))
   
-* Normalized by total population (`SE_T025_001`, `SE_T001_001`)...
-  * Male population (`SE_T005_002`, `SE_T004_002`)
-  * Female population (`SE_T005_003`, `SE_T004_003`)
-  * White population (`SE_T014_002`, `SE_T013_002`)
-  * Black or African American population (`SE_T014_003`, `SE_T013_003`)
-  * Asian population (`SE_T014_005`, `SE_T013_005`)
-  * Population in group quarters (`SE_T025_016`, (None))
-  * Population 16 years and over (`SE_T069_001`, (None))
-  * Population poor or struggling (`SE_T185_004`, `SE_T118_004`)
+* Normalized by total population (`T025_001`, `T055_001`, `T001_001`)...
+  * Male population (`T005_002`, `T003_002`, `T004_002`)
+  * Female population (`T005_003`, `T003_003`, `T004_003`)
+  * White population (`T014_002`, `T054_002`, `T013_002`)
+  * Black or African American population (`T014_003`, `T054_003`, `T013_003`)
+  * Asian population (`T014_005`, `T054_005`, `T013_005`)
+  * Population in group quarters (`T025_016`, `T063_016`, (None))
+  * Population 16 years and over (`T069_001`, (None), (None))
+  * Population poor or struggling (`T185_004`, (None), `T118_004`)
 
-* Normalized by population in group quarters (`SE_T025_016`, (None))...
-  * Institutionalized population (`SE_T025_017`, (None))
+* Normalized by population in group quarters (`T025_016`, `T063_016`, (None))...
+  * Institutionalized population (`T025_017`, (None), (None))
   
-* Normalized by population 16 years and over (`SE_T069_001`, (None))...
-  * Population 16 and over in the labor force (`SE_T069_002`, (None))
+* Normalized by population 16 years and over (`T069_001`, (None), (None))...
+  * Population 16 and over in the labor force (`T069_002`, (None), (None))
   
-* Normalized by population 16 and over in the labor force (`SE_T069_002`, (None))...
-  * Employed civilians in the labor force (`SE_T069_005`, (None))
+* Normalized by population 16 and over in the labor force (`T069_002`, (None), (None))...
+  * Employed civilians in the labor force (`T069_005`, (None), (None))
 
 ## U.S. Census
 
@@ -106,7 +106,8 @@ Variable names are given in parentheses as (2000 Census, American Community Surv
 ## Dependencies
 
 ```{r installation, eval=FALSE}
-install.packages(c('bnlearn', 'reshape2', 'plyr', 'ggplot2', 'sp', 'raster', 'rgdal'))
+install.packages(c('bnlearn', 'reshape2', 'plyr', 'ggplot2', 'sp',
+                   'raster', 'rgdal', 'RColorBrewer'))
 
 # We have to use Bioconductor to install gRain dependencies
 source('http://bioconductor.org/biocLite.R')

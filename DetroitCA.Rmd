@@ -240,17 +240,20 @@ load(file='rda/layerStack.rda')
 require(gRain)
 
 # We use the junction tree algorithm to create an independence network that we can query
-prior <- compile(as.grain(fit.expert))
+prior.expert <- compile(as.grain(fit.expert))
+prior.mmhc <- compile(as.grain(fit.mmhc))
 
 # Both approaches, calc() and stackApply(), take the same amount of time
 # output <- raster::calc(layers, function (states) {
 #   apply(states, 1, function (r) {
-#     chooseOutcome(querygrain(updateNetwork(prior, as.data.frame(t(r))), nodes='new')$new)
+#     chooseOutcome(querygrain(updateNetwork(prior.expert, as.data.frame(t(r))),
+#                              nodes='new')$new)
 #   })
 # }, forcefun=TRUE)
 
 output <- stackApply(layers, rep(1, length(names(layers))), function (r, ...) {
-  chooseOutcome(querygrain(updateNetwork(prior, as.data.frame(t(r))), nodes='new')$new)
+  chooseOutcome(querygrain(updateNetwork(prior.expert, as.data.frame(t(r))),
+                           nodes='new')$new)
 })
 ```
 
@@ -292,7 +295,8 @@ title('2006 Expert Graph Simulation Subtracted from Observed Land Cover')
 ## Transition Probabilities
 
 ```{r}
-transition.probs <- raster::calc(layers, function (states) {
+# Find transition probabilities for the expert graph
+trans.probs.expert <- raster::calc(layers, function (states) {
   trans <- matrix(nrow=dim(states)[1], ncol=3)
   for (i in seq(1, dim(states)[1])) {
     trans[i,] <- as.numeric(querygrain(updateNetwork(prior, as.data.frame(t(states[i,]))),
@@ -300,47 +304,91 @@ transition.probs <- raster::calc(layers, function (states) {
   }
   return(trans)
 }, forcefun=TRUE)
+names(trans.probs.expert) <- c('prob.undeveloped', 'prob.low.dev', 'prob.high.dev')
 
-names(transition.probs) <- c('prob.undeveloped', 'prob.low.dev', 'prob.high.dev')
-
-transition.probs$prob.undeveloped <- mask(transition.probs$prob.undeveloped,
+# Masking
+trans.probs.expert$prob.undeveloped <- mask(trans.probs.expert$prob.undeveloped,
                                           layers$pop.density, maskvalue=NA)
-transition.probs$prob.low.dev <- mask(transition.probs$prob.low.dev,
+trans.probs.expert$prob.low.dev <- mask(trans.probs.expert$prob.low.dev,
                                       layers$pop.density, maskvalue=NA)
-transition.probs$prob.high.dev <- mask(transition.probs$prob.high.dev,
+trans.probs.expert$prob.high.dev <- mask(trans.probs.expert$prob.high.dev,
+                                       layers$pop.density, maskvalue=NA)
+```
+
+```{r}
+# Find transition probabilities for the learned graph
+trans.probs.mmhc <- raster::calc(layers, function (states) {
+  trans <- matrix(nrow=dim(states)[1], ncol=3)
+  for (i in seq(1, dim(states)[1])) {
+    trans[i,] <- as.numeric(querygrain(updateNetwork(prior.mmhc, as.data.frame(t(states[i,]))),
+                                       nodes='new')$new)
+  }
+  return(trans)
+}, forcefun=TRUE)
+names(trans.probs.mmhc) <- c('prob.undeveloped', 'prob.low.dev', 'prob.high.dev')
+
+# Masking
+trans.probs.mmhc$prob.undeveloped <- mask(trans.probs.mmhc$prob.undeveloped,
+                                          layers$pop.density, maskvalue=NA)
+trans.probs.mmhc$prob.low.dev <- mask(trans.probs.mmhc$prob.low.dev,
+                                      layers$pop.density, maskvalue=NA)
+trans.probs.mmhc$prob.high.dev <- mask(trans.probs.mmhc$prob.high.dev,
                                        layers$pop.density, maskvalue=NA)
 
-save(transition.probs, file='rda/2006transitionProbs.rda')
-load(file='rda/2006transitionProbs.rda')
+
+save(trans.probs.mmhc, trans.probs.expert, file='rda/transitionProbs.rda')
+load(file='rda/transitionProbs.rda')
 ```
 
 ```{r}
 require(RColorBrewer)
 cols <- brewer.pal(5, 'PuBuGn')
 cols[1] <- '#FFFFFF'
-image(transition.probs$prob.undeveloped, axes=FALSE, zlim=c(0, 1),
+
+image(trans.probs.expert$prob.undeveloped, axes=FALSE, zlim=c(0, 1),
       xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. Undeveloped', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Expert Graph Transition Probabilities: Undeveloped')
+
+image(trans.probs.mmhc$prob.undeveloped, axes=FALSE, zlim=c(0, 1),
+      xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
+legend('bottomright', fill=rev(cols), bty="n", title='Prob. Undeveloped', cex=1.3,
+       legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
+plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
+title('2006 Learned Graph Transition Probabilities: Undeveloped')
 ```
 
 ```{r}
-image(transition.probs$prob.low.dev, axes=FALSE, zlim=c(0, 1),
+image(trans.probs.expert$prob.low.dev, axes=FALSE, zlim=c(0, 1),
       xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. Low Dev.', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Expert Graph Transition Probabilities: Low Development')
+
+image(trans.probs.mmhc$prob.low.dev, axes=FALSE, zlim=c(0, 1),
+      xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
+legend('bottomright', fill=rev(cols), bty="n", title='Prob. Low Dev.', cex=1.3,
+       legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
+plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
+title('2006 Learned Graph Transition Probabilities: Low Development')
 ```
 
 ```{r}
-image(transition.probs$prob.high.dev, axes=FALSE, zlim=c(0, 1),
+image(trans.probs.expert$prob.high.dev, axes=FALSE, zlim=c(0, 1),
       xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. High Dev.', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Expert Graph Transition Probabilities: High Development')
+
+image(trans.probs.mmhc$prob.high.dev, axes=FALSE, zlim=c(0, 1),
+      xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
+legend('bottomright', fill=rev(cols), bty="n", title='Prob. High Dev.', cex=1.3,
+       legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
+plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
+title('2006 Learned Graph Transition Probabilities: High Development')
 ```
 

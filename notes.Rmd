@@ -16,20 +16,53 @@ output: html_document
 ### Training Sample Composition
 
 **November 25, 2014**
-I used a random 1% of the combined 2001-2006 data to train both the expert and the learned network.
+I used a random 1% of the combined 2001-2006 data to train both the expert and the learned network. I need to re-learn the network from the discretized data. I should compare the networks learned from both continuous and discrete predictor data. Also, I should try to learn the networks from a different random subset than the parameterization uses. In fact, I'd like a 3-folds training set developed:
 
-Next, I want to try:
+- 1/3 for learning network structure
+- 1/3 for fitting the weights
+- 1/3 for scoring the fitted network using Bayes' Information Criterion (BIC)
+
+**What does "out-of-fit" prediction mean in this context?** It would mean to train on the 2001-2006 data and make a prediction for 2011.
+
+With the "superior" model selected, I want to try:
+- Using only the 2001-2006 changed data to train the network.
 - Using a much higher proportion of the data to train the network.
-- 
-
-### Resolution of Training Data
+- Using finer discretization (more quantiles for each parameter).
 
 ## Prediction
 
+The predictor variables were aggregated to 300 meters to reduce the computational complexity.
+
 ### Expert versus Learned Network
+
+# Background
+
+## Bayesian Networks
+
+In Bayesian networks, either all of the nodes must be continuous variables or all must be discrete variables; continuous and discrete variables cannot be mixed. This is to facilitate calculating the joint probability distribution which is only possible given certain assumptions about the network's nodes.
+
+## Parameter Learning
+
+When the variables that make up the nodes take on continuous values, the probability distribution of each node is a normal distribution and the resulting network that is formed is termed a Gaussian Bayesian network. In the case of continuous variables, the parameters are just regression coefficients. Because the nodes of a Bayesian network are linked, multivariate regression is performed to predict the distribution arising at each node in the network, providing regression coefficients for each pairwise interaction between a node and its connections.
+
+Parameter learning is generally done through a maximum likelihood approach (whereby the best fit parameters are estimated) or a Bayesian approach (whereby the posterior distribution of the parameters for a discrete distribution is estimated). The Bayesian approach is preferred as it provides more robust estimates and guarantees the conditional probability tables will be complete (Nagarajan et al. 2013).
 
 # Methods Used
 
 ## Learning the Network Structure
 
-The network structure was learned using the complete 2001-2006 dataset. Most of the algorithms produced extremely dense graphs including complete graphs. Ultimately, the hybrid scoring and constraint algorithms, RSMAX2 and Max-Min Hill Climbing, produced the same network. The only change made to the learned network was reversing the directionality of the `pop.density` to `new` arc so that `new` was dependent on `pop.density`.
+Pearson's correlation coefficients were calculated for every pair of predictor variables available in the complete 2001-2006 dataset. The coefficients were used to eliminate highly correlated ($R^2 \geq 0.5$ predictor variables before learning the network structure. The remaining variables, with the exception of prior land cover, were discretized into two quantiles. Both prior and future land cover were already discretely classified into no development, low development, and high-intensity developemnt.
+
+A random sample of the discrete training data was used to learn the network structure using a variety of constraint-based, score-based, and hybrid network learning algorithms. Most of the algorithms produced extremely dense graphs including many complete graphs. Ultimately, the hybrid scoring and constraint algorithms, RSMAX2 and Max-Min Hill Climbing, produced the same network. The only change made to the learned network was reversing the directionality of the `pop.density` to `new` arc so that `new` was dependent on `pop.density`.
+
+In addition to the learned network, an "expert" network was specified based on the author's beliefs about conditional dependencies between predictor variables. Both networks are directed, acyclic graphs (DAGs).
+
+## Learning the Weights
+
+The Bayesian networks were trained from the high-resolution, 30-meter land cover data and landscape measures joined to the coarse-resolution census data.
+
+# References
+
+1. John R. Logan, Zengwang Xu, and Brian Stults. 2012. "Interpolating US Decennial Census Tract Data from as Early as 1970 to 2010: A Longitudinal Tract Database" Professional Geographer, forthcoming.
+2. Nagarajan, R., Scutari, M., & Lebre, S. (2013). Bayesian Networks in R. New York, New York, USA: Springer. Retrieved from http://link.springer.com/content/pdf/10.1007/978-1-4614-6446-4.pdf
+3. Scutari, M. (2014). bnlearn R Package Documentation. Retrieved November 12, 2014, from http://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf

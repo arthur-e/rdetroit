@@ -449,7 +449,7 @@ predict(quadmod, data.frame(n=seq(1, length(census.vars), by=1)))
 
 # References
 
-1. John R. Logan, Zengwang Xu, and Brian Stults. 2012. “Interpolating US Decennial Census Tract Data from as Early as 1970 to 2010: A Longitudinal Tract Database” Professional Geographer, forthcoming.
+1. John R. Logan, Zengwang Xu, and Brian Stults. 2012. "Interpolating US Decennial Census Tract Data from as Early as 1970 to 2010: A Longitudinal Tract Database" Professional Geographer, forthcoming.
 2. Nagarajan, R., Scutari, M., & Lebre, S. (2013). Bayesian Networks in R. New York, New York, USA: Springer. Retrieved from http://link.springer.com/content/pdf/10.1007/978-1-4614-6446-4.pdf
 3. Scutari, M. (2014). bnlearn R Package Documentation. Retrieved November 12, 2014, from http://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf
 

@@ -228,34 +228,40 @@ remove(cases, training)
 
 # Creating a random sample...
 training.sample <- training.discrete[sample(nrow(training.discrete),
-                                        dim(training.discrete)[1]*0.01),]
+                                        dim(training.discrete)[1]*0.1),]
 
-plot(bnlearn::iamb(training.sample));title('IAMB')
-plot(bnlearn::hc(training.sample));title('Hill-Climbing')
-plot(bnlearn::tabu(training.sample));title('Tabu Scoring')
-plot(bnlearn::mmhc(training.sample));title('Max-Min Hill Climbing')
-plot(bnlearn::rsmax2(training.sample));title('RSMAX2')
+# It just so happens that the total number of cells is divisible by three; use floor() to be safe
+k <- floor(dim(training.sample)[1]/3)
+training.sample1 <- training.sample[1:k,]
+training.sample2 <- training.sample[(k+1):(2*k),]
+training.sample3 <- training.sample[((2*k)+1):(3*k),]
+
+plot(bnlearn::iamb(training.sample1));title('IAMB')
+plot(bnlearn::hc(training.sample1));title('Hill-Climbing')
+plot(bnlearn::tabu(training.sample1));title('Tabu Scoring')
+plot(bnlearn::mmhc(training.sample1));title('Max-Min Hill Climbing')
+plot(bnlearn::rsmax2(training.sample1));title('RSMAX2')
 
 # 2014-11-23
 # All of the network learning approaches produce a complete or near-complete graph when trained on the full dataset, subset by independent factors, or a random sample thereof. Worse still, no nodes have arcs directed towards new land cover. The complete graph can also be demonstrated to be inferior as it has a higher BIC relative to the more sparse, expert graph.
 
 dim(training.discrete[training.discrete$old != training.discrete$new,])[1]
-training.sample <- subset(training.discrete, !old == new)
-plot(bnlearn::hc(training.sample, restart=1));title('Hill-Climbing')
-plot(bnlearn::hc(training.sample,
+training.sample0 <- subset(training.discrete, !old == new)
+plot(bnlearn::hc(training.sample0, restart=1));title('Hill-Climbing')
+plot(bnlearn::hc(training.sample0,
                  restart=5));title('Hill-Climbing; Restarts=5')
-plot(bnlearn::hc(training.sample,
+plot(bnlearn::hc(training.sample0,
                  restart=10));title('Hill-Climbing; Restarts=10')
-plot(bnlearn::hc(training.sample,
+plot(bnlearn::hc(training.sample0,
                  restart=20));title('Hill-Climbing; Restarts=20')
-plot(bnlearn::hc(training.sample,
+plot(bnlearn::hc(training.sample0,
                  restart=10, perturb=5));title('Hill-Climbing; Restarts=10, Perturbations=5')
-plot(bnlearn::hc(training.sample,
+plot(bnlearn::hc(training.sample0,
                  restart=20, perturb=10));title('Hill-Climbing; Restarts=20, Perturbations=10')
-plot(bnlearn::rsmax2(training.sample));title('Learned by RSMAX2')
-plot(bnlearn::mmhc(training.sample));title('Learned by Max-Min Hill Climbing')
+plot(bnlearn::rsmax2(training.sample0));title('Learned by RSMAX2')
+plot(bnlearn::mmhc(training.sample0));title('Learned by Max-Min Hill Climbing')
 
-mmhc.dag <- bnlearn::mmhc(training.sample)
+mmhc.dag <- bnlearn::mmhc(training.sample0)
 
 # We'll reverse the direction of just the pop.density <- new arc
 mmhc.dag <- set.arc(mmhc.dag, 'pop.density', 'new')
@@ -265,10 +271,10 @@ plot(mmhc.dag); title('Learned by Max-Min Hill Climbing; Revised by Expert')
 # When the data are trained on just that subset of pixels which have changed between 2001 and 2006, the graphs that are learned are still dense but the two hybrid algorithms produce a less dense graph that they agree on completely.
 
 # Old land cover less developed than new? (Increasing development intensity)
-training.sample <- subset(training.discrete, ((old==0 | old==1) & new==2) |
+training.sample0 <- subset(training.discrete, ((old==0 | old==1) & new==2) |
                             (old==0 & (new==1 | new==2)))
-plot(bnlearn::mmhc(training.sample));title('Old < New; Learned by Max-Min Hill Climbing')
-plot(bnlearn::rsmax2(training.sample));title('Old < New; Learned by RSMAX2')
+plot(bnlearn::mmhc(training.sample0));title('Old < New; Learned by Max-Min Hill Climbing')
+plot(bnlearn::rsmax2(training.sample0));title('Old < New; Learned by RSMAX2')
 
 # New land cover less developed than old? (Decreasing development intensity)
 # There are only 16 such pixels...
@@ -285,21 +291,13 @@ plot(expert.dag); title('Specified Network')
 #====================
 # Parameter Learning
 
-# Creating a random sample...One way or the other
-training.sample <- training.discrete[sample(nrow(training.discrete),
-                                            dim(training.discrete)[1]*0.01),]
-#training.sample <- subset(training.discrete, !old == new)
-
 # How do the two learned model structures compare?
-score(mmhc.dag, data=training.discrete)
-score(expert.dag, data=training.discrete)
+score(mmhc.dag, data=training.sample3)
+score(expert.dag, data=training.sample3)
 
-# Here, the training samples are those pixels that changed only
-score(mmhc.dag, data=training.sample)
-score(expert.dag, data=training.sample)
-
-fit.mmhc <- bn.fit(mmhc.dag, data=training.sample, method='bayes')
-fit.expert <- bn.fit(expert.dag, data=training.sample, method='bayes')
+# Note: A different subset is used to fit parameters
+fit.mmhc <- bn.fit(mmhc.dag, data=training.sample2, method='bayes')
+fit.expert <- bn.fit(expert.dag, data=training.sample2, method='bayes')
 
 save(mmhc.dag, expert.dag, fit.mmhc, fit.expert, training.discrete, file='rda/graphs.rda')
 load(file='rda/graphs.rda')

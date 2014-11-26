@@ -242,6 +242,7 @@ require(gRain)
 # We use the junction tree algorithm to create an independence network that we can query
 prior <- compile(as.grain(fit.expert))
 
+# Compare calc() to using apply() on the (raster?) (matrix?)...
 output <- raster::calc(layers, function (states) {
   apply(states, 1, function (r) {
     chooseOutcome(querygrain(updateNetwork(prior, as.data.frame(t(r))), nodes='new')$new)

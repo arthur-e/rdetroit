@@ -53,13 +53,13 @@ Parameter learning is generally done through a maximum likelihood approach (wher
 
 Pearson's correlation coefficients were calculated for every pair of predictor variables available in the complete 2001-2006 dataset. The coefficients were used to eliminate highly correlated ($R^2 \geq 0.5$ predictor variables before learning the network structure. The remaining variables, with the exception of prior land cover, were discretized into two quantiles. Both prior and future land cover were already discretely classified into no development, low development, and high-intensity developemnt.
 
-A random sample of the discrete training data was used to learn the network structure using a variety of constraint-based, score-based, and hybrid network learning algorithms. Most of the algorithms produced extremely dense graphs including many complete graphs. Ultimately, the hybrid scoring and constraint algorithms, RSMAX2 and Max-Min Hill Climbing, produced the same network. The only change made to the learned network was reversing the directionality of the `pop.density` to `new` arc so that `new` was dependent on `pop.density`.
+A random sample of the discrete training data was used to learn the network structure using a variety of constraint-based, score-based, and hybrid network learning algorithms. Most of the algorithms produced extremely dense graphs including many complete graphs. When trained on just those pixels that changed between 2001 and 2006, however, two hybrid algorithms, RSMAX2 and Max-Min Hill Climbing, produced the same network. The only change made to the learned network was reversing the directionality of the `pop.density` to `new` arc so that `new` was dependent on `pop.density`.
 
-In addition to the learned network, an "expert" network was specified based on the author's beliefs about conditional dependencies between predictor variables. Both networks are directed, acyclic graphs (DAGs).
+In addition to the learned network, an "expert" network was specified based on the author's beliefs about conditional dependencies between predictor variables. Both networks are directed, acyclic graphs (DAGs). When scored using a different sample than they were learned on, the expert network was found to be superior to the learned network according to Bayes' Information Criterion (BIC). This may be becaused the expert network is more sparse than the learned network.
 
 ## Learning the Weights
 
-The Bayesian networks were trained from the high-resolution, 30-meter land cover data and landscape measures joined to the coarse-resolution census data.
+The Bayesian networks were trained from the high-resolution, 30-meter land cover data and landscape measures joined to the coarse-resolution census data. The random samples used to learn the network structure, score the network structure, and fit the model were distinct; a three-folds random sample was created for these purposes.
 
 # References
 

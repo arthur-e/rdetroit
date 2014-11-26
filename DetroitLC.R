@@ -8,14 +8,14 @@ options(stringsAsFactors=FALSE)
 
 census.vars <- c('SE_T003_001', 'SE_T093_001', 'SE_T155_001', 'SE_T156_001', 'SE_T156_002', 'SE_T004_002', 'SE_T005_002', 'SE_T005_003', 'SE_T014_002', 'SE_T014_003', 'SE_T014_005', 'SE_T020_001', 'SE_T020_002', 'SE_T020_003', 'SE_T020_005', 'SE_T020_006', 'SE_T020_008', 'SE_T020_009', 'SE_T025_001', 'SE_T185_004')
 census.2010.vars <- c('SE_T002_002', 'SE_T068_001', 'SE_T069_001', 'SE_T069_002', 'SE_T002_006', 'SE_T058_001', 'SE_T058_002', 'SE_T058_003', 'SE_T058_005', 'SE_T058_006', 'SE_T063_003', 'SE_T063_004', 'SE_T063_006', 'SE_T063_007', 'SE_T063_009', 'SE_T063_011', 'SE_T063_012', 'SE_T063_013', 'SE_T055_001', 'SE_T003_002', 'SE_T003_003', 'SE_T054_002', 'SE_T054_003', 'SE_T054_005', 'SE_T063_016')
-acs.vars <- c('SE_T002_001', 'SE_T001_001', 'SE_T004_002', 'SE_T004_003', 'SE_T002_003', 'SE_T057_001', 'SE_T093_001', 'SE_T094_001', 'SE_T094_002', 'SE_T017_001', 'SE_T017_002', 'SE_T017_003', 'SE_T017_005', 'SE_T017_006', 'SE_T017_008', 'SE_T017_009', 'SE_T013_002', 'SE_T013_003', 'SE_T013_005', 'SE_T118_004')
+acs.vars <- c('SE_T002_002', 'SE_T001_001', 'SE_T004_002', 'SE_T004_003', 'SE_T002_003', 'SE_T057_001', 'SE_T093_001', 'SE_T094_001', 'SE_T094_002', 'SE_T017_001', 'SE_T017_002', 'SE_T017_003', 'SE_T017_005', 'SE_T017_006', 'SE_T017_008', 'SE_T017_009', 'SE_T013_002', 'SE_T013_003', 'SE_T013_005', 'SE_T118_004')
 
 # =======================================
 # Reading in census and crosswalk tables
 census2000 <- read.csv('census_data/census2000.csv', header=T, skip=1,
                        colClasses=c('Geo_FIPS'='character')) # 2000 Census data
 census2010 <- read.csv('census_data/census2010.csv', header=T, skip=1,
-                       colClasses=c('Geo_FIPS'='character')) # 2000 Census data
+                       colClasses=c('Geo_FIPS'='character')) # 2010 Census data
 acs2006.2010 <- read.csv('census_data/acs2006-2010.csv', header=T, skip=1,
                          colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
 acs2008.2012 <- read.csv('census_data/acs2008-2012.csv', header=T, skip=1,
@@ -112,9 +112,28 @@ survey2010 <- with(census2010, data.frame(
   white.pop=SE_T054_002 / SE_T055_001, # White population...total pop.
   black.pop=SE_T054_003 / SE_T055_001, # Black population...total pop.
   asian.pop=SE_T054_005 / SE_T055_001)) # Asian population...total pop.
+survey2011 <- with(acs2008.2012, data.frame(
+  FIPS=Geo_FIPS,
+  pop.density=SE_T002_002,
+  med.hhold.income=SE_T057_001,
+  occupied.housing=SE_T094_001 / SE_T093_001, # Occupied housing units norm. by housing unit count
+  owner.occupied=SE_T094_002 / SE_T093_001, # Owner-occupied units norm. by housing unit count
+  hholds=SE_T017_001 / SE_T002_003, # Households...by land area
+  fam.hholds=SE_T017_002 / SE_T002_003, # Family households...by land area
+  married.hholds=SE_T017_003 / SE_T002_003, # Married-couple households...by land area
+  lone.male.hholds=SE_T017_005 / SE_T002_003, # Family -holds w/ lone male h-holder...by land area
+  lone.female.hholds=SE_T017_006 / SE_T002_003, # Fam. -holds w/ lone female h-holder...land area
+  male.nonfam.hholds=SE_T017_008 / SE_T002_003, # Non-fam. -holds w/ male h-holder...by land area
+  female.nonfam.hholds=SE_T017_009 / SE_T002_003, # Non-fam. -holds w/ female h-holder...land area
+  male.pop=SE_T004_002 / SE_T001_001, # Male population normalized by total population
+  female.pop=SE_T004_003 / SE_T001_001, # Female population normalized by total pop.
+  white.pop=SE_T013_002 / SE_T001_001, # White population...total pop.
+  black.pop=SE_T013_003 / SE_T001_001, # Black population...total pop.
+  asian.pop=SE_T013_005 / SE_T001_001, # Asian population...total pop.
+  poor.pop=SE_T118_004 / SE_T001_001)) # Population poor or struggling...total pop.
 
 # Clean-up
-remove(acs2006.2010, census2000, census2010, census2000.as.2010, temp, xwalk)
+remove(acs2006.2010, acs2008.2012, census2000, census2010, census2000.as.2010, temp, xwalk)
 
 # =================================================
 # Join census tract shapefiles and census measures
@@ -127,6 +146,7 @@ require(plyr)
 attr2000 <- merge(tracts, survey2000, by='FIPS')
 attr2006 <- merge(tracts, survey2006, by='FIPS')
 attr2010 <- merge(tracts, survey2010, by='FIPS')
+attr2011 <- merge(tracts, survey2011, by='FIPS')
 
 # ===========================================
 # Get and reclassify sample land cover layer

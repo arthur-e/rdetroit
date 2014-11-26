@@ -8,6 +8,7 @@ output: html_document
 # Ongoing Work
 
 - Check that normalized values make sense.
+- **Did I use the total population variable instead of population density in the 2006-2010 ACS?**
 - Re-learn the network from discretized data???
 - Check CPTs for explanatory relationships that make sense.
 

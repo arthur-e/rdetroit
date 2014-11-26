@@ -18,6 +18,8 @@ census2010 <- read.csv('census_data/census2010.csv', header=T, skip=1,
                        colClasses=c('Geo_FIPS'='character')) # 2000 Census data
 acs2006.2010 <- read.csv('census_data/acs2006-2010.csv', header=T, skip=1,
                          colClasses=c('Geo_FIPS'='character')) # 2006-2010 ACS data
+acs2008.2012 <- read.csv('census_data/acs2008-2012.csv', header=T, skip=1,
+                         colClasses=c('Geo_FIPS'='character')) # 2008-2012 ACS data
 xwalk <- plyr::arrange(read.csv('census_data/crosswalk_2000_2010.csv',
                                 colClasses=c('character', 'character')),
                  trtid10) # 2000 to 2010 Crosswalk data
@@ -27,6 +29,7 @@ require(plyr)
 census2000 <- subset(mutate(census2000, trtid00=Geo_FIPS), select=c('trtid00', census.vars))
 census2010 <- subset(census2010, select=c('Geo_FIPS', census.2010.vars))
 acs2006.2010 <- subset(acs2006.2010, select=c('Geo_FIPS', acs.vars))
+acs2008.2012 <- subset(acs2008.2012, select=c('Geo_FIPS', acs.vars))
 
 # Subset the crosswalk table to just those tracts in our census data
 xwalk <- subset(xwalk, trtid00 %in% intersect(census2000$trtid00, xwalk$trtid00),
@@ -77,7 +80,7 @@ survey2000 <- with(census2000.as.2010, data.frame(
   poor.pop=SE_T185_004 / SE_T025_001)) # Population poor or struggling...total pop.
 survey2006 <- with(acs2006.2010, data.frame(
   FIPS=Geo_FIPS,
-  pop.density=SE_T002_001,
+  pop.density=SE_T002_002, # FIXME Oops!
   med.hhold.income=SE_T057_001,
   occupied.housing=SE_T094_001 / SE_T093_001, # Occupied housing units norm. by housing unit count
   owner.occupied=SE_T094_002 / SE_T093_001, # Owner-occupied units norm. by housing unit count

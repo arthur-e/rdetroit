@@ -155,11 +155,13 @@ file.loc <- '/home/arthur/Workspace/TermProject/'
 require(raster)
 rast2001 <- raster::raster(paste0(file.loc, 'nlcd2001_nad83.tif'))
 rast2006 <- raster::raster(paste0(file.loc, 'nlcd2006_nad83.tif'))
+rast2011 <- raster::raster(paste0(file.loc, 'nlcd2011_nad83.tif'))
 reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                            c(20,23,1), c(23,24,2), c(24,99,0)),
                          byrow=TRUE, ncol=3)
 dev2001 <- raster::reclassify(rast2001, reclass.matrix, right=TRUE) # Intervals closed on right
 dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
+dev2011 <- raster::reclassify(rast2011, reclass.matrix, right=TRUE)
 
 # Recreation and outdoor areas
 rec.area.proximity <- raster::raster(paste0(file.loc,
@@ -175,6 +177,7 @@ road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity_cut
 require(rgdal)
 attr2000 <- sp::spTransform(attr2000, raster::crs(dev2001))
 attr2006 <- sp::spTransform(attr2006, raster::crs(dev2001))
+attr2011 <- sp::spTransform(attr2011, raster::crs(dev2011))
 
 save(dev2001, dev2006, attr2000, attr2006, file='rda/spatialMeasures.rda')
 
@@ -182,17 +185,20 @@ devp2001 <- SpatialPoints(as.data.frame(dev2001, xy=TRUE)[,1:2],
                           proj4string=crs(attr2000))
 devp2006 <- SpatialPoints(as.data.frame(dev2006, xy=TRUE)[,1:2],
                           proj4string=crs(attr2006))
+devp2011 <- SpatialPoints(as.data.frame(dev2011, xy=TRUE)[,1:2],
+                          proj4string=crs(attr2011))
 
 # Extract attributes by their location... This takes a long time (about 4 minutes for each)
 attr2000 <- sp::over(devp2001, attr2000)
 attr2006 <- sp::over(devp2006, attr2006)
+attr2011 <- sp::over(devp2011, attr2011)
 
 # Sample from the distance to roads layer
 road.proximities <- data.frame(road.proximity=extract(road.proximity, devp2001))
 rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity, devp2001))
 
-save(road.proximities, rec.proximities, attr2000, attr2006, devp2001, devp2006,
-     file='rda/bnData.rda')
+save(road.proximities, rec.proximities, attr2000, attr2006, attr2011,
+     devp2001, devp2006, devp2011, file='rda/bnData.rda')
 load(file='rda/bnData.rda')
 
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled (Naive, but R leaves us with no choice)
@@ -213,7 +219,7 @@ save(training, file='rda/training.rda')
 load(file='rda/training.rda')
 
 # Clean-up
-remove(rrast2000, rast2006, tracts, attr2000, attr2006, dev2001, dev2006,
+remove(rrast2001, rast2006, tracts, attr2000, attr2006, dev2001, dev2006,
        devp2001, devp2006, rec.area.proximity, rec.proximities,
        road.proximity, road.proximities)
 
@@ -234,23 +240,25 @@ subset(corrs, abs(r.sq) > 0.5)
 
 # 2014-11-22
 # We have to include the following variables: old, new.
-# Valid combinations of variables seem to be: [fam.hholds | married.hholds] & [med.hhold.income | owner.occupied | poor.pop | occupied.housing] & [pop.density] & [rec.area.proximity] & [male.pop | female.pop] & [road.proximity | old]
+# Valid combinations of variables seem to be: [fam.hholds | married.hholds | pop.density] & [med.hhold.income | owner.occupied | poor.pop | occupied.housing] & [rec.area.proximity] & [male.pop | female.pop] & [road.proximity | old]
 # road.proximity is correlated with old at an r^2 of -0.51
+# pop.density is correlated with old at an r^2 of 0.50
 
 subset(corrs, X1=='old' | X2=='old')
 subset(corrs, X1=='rec.area.proximity' | X2=='rec.area.proximity')
 subset(corrs, X1=='road.proximity' | X2=='road.proximity')
+subset(corrs, X1=='med.hhold.income' | X2=='med.hhold.income')
 
-vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
+vars <- c('old', 'new', 'road.proximity', 'rec.area.proximity', 'med.hhold.income', 'pop.density', 'male.pop')
 
 training.data <- subset(training, select=vars)
 
 # If necessary (because R's save() changed the column data types)
-training.data <- transform(training.data,
-                           med.hhold.income=as.numeric(med.hhold.income),
-                           pop.density=as.numeric(pop.density))
+# training.data <- transform(training.data,
+#                            med.hhold.income=as.numeric(med.hhold.income),
+#                            pop.density=as.numeric(pop.density))
 
-# So, we discard road.proximity
+# So, we discard road.proximity, pop.density
 vars <- c('new', names(dedup(training.data, 0.5)))
 training.data <- subset(training.data, select=vars)
 

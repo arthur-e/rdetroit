@@ -1,7 +1,9 @@
-library(data.table, sp, raster)
+library(data.table)
+library(sp, raster)
 library(rgdal)
 library(plyr, reshape2)
 library(bnlearn)
+library(parallel)
 
 setwd('/usr/local/dev/rdetroit/')
 options(stringsAsFactors=FALSE)
@@ -265,23 +267,27 @@ training.data <- subset(training.data, select=vars)
 ########################
 # Discretizing the data
 
-# Creating a random sample...
-training.sample <- training.data[sample(nrow(training.data),
-                                        dim(training.data)[1]*0.1),]
-
 require(data.table)
-training.discrete <- data.table(bnlearn::discretize(training.sample[,3:length(vars)],
+training.discrete <- data.table(bnlearn::discretize(training.data[,3:length(vars)],
                                                     breaks=rep(2, length(vars) - 2),
                                                     method='quantile'))
 
-# Compare speed (and output size) of lapply() and sapply()
-training.discrete$new <- lapply(training.sample$new, as.factor)
-training.discrete$old <- lapply(training.sample$old, as.factor)
+training.discrete$new <- training.data$new
+training.discrete$old <- training.data$old
 
-save(training.data, training.discrete, file='rda/trainingData.rda')
+# Creating a random sample...
+training.sample <- training.discrete[sample(nrow(training.discrete),
+                                            dim(training.discrete)[1]*0.1),]
+
+# Compare to cut(), findInterval(), and converting to character vector first...
+require(parallel)
+training.sample$new <- mcmapply(as.factor, training.sample$new, mc.cores=3)
+training.sample$old <- mcmapply(as.factor, training.sample$old, mc.cores=3)
+
+save(training.data, training.sample, file='rda/trainingData.rda')
 load(file='rda/trainingData.rda')
 
-remove(cases, training, training.data)
+remove(cases, training, training.data, training.discrete)
 
 #####################################
 # Training the Bayesian Network (BN)

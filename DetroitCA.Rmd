@@ -297,8 +297,8 @@ output.mmhc.2006 <- stackApply(layers, rep(1, length(names(layers))), function (
                            nodes='new')$new)
 })
 
-output.mmhc.2006 <- mask(output.mmhc.2006, layers$pop.density, maskvalue=NA)
-output.expert.2006 <- mask(output.expert.2006, layers$pop.density, maskvalue=NA)
+output.mmhc.2006 <- mask(output.mmhc.2006, layers$male.pop, maskvalue=NA)
+output.expert.2006 <- mask(output.expert.2006, layers$male.pop, maskvalue=NA)
 
 save(output.mmhc.2006, output.expert.2006, file='rda/outputs2006.rda')
 load(file='rda/outputs2006.rda')
@@ -308,18 +308,21 @@ What does our actual 2006 land cover look like?
 
 ```{r}
 load(file='rda/caAggregates.rda')
+file.loc <- '/home/arthur/Workspace/TermProject/'
 counties <- readOGR(paste0(file.loc, 'ancillary/co26_d00_select_nad83.shp'),
                     'co26_d00_select_nad83')
 counties <- spTransform(counties, crs(dev2001))
 
-dev2006 <- mask(dev2006, layers$pop.density, maskvalue=NA)
+dev2006 <- mask(dev2006, layers$male.pop, maskvalue=NA)
 cols <- c('#FFFFFF', '#AACCEE', '#113355')
 
 plot(dev2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE)
 legend('bottomright', legend=c('High Development', 'Low Development', 'Undeveloped'),
-       fill=rev(cols), bty="n", title='Legend', cex=1.3)
+       fill=rev(cols), bty="n", title='Land Cover', cex=1.3)
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Observed Land Cover from NLCD')
+
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_observed_from_nlcd.png'); dev.off()
 ```
 
 What does our "expert" prediction of 2006 land cover look like?
@@ -334,6 +337,7 @@ legend('bottomright', legend=c('High Development', 'Low Development', 'Undevelop
        fill=rev(cols), bty="n", title='Land Cover', cex=1.3)
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Prediction from Expert Graph with 2006 Census Data')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_expert_prediction.png'); dev.off()
 ```
 
 What does our "learned" prediction of 2006 land cover look like?
@@ -344,6 +348,7 @@ legend('bottomright', legend=c('High Development', 'Low Development', 'Undevelop
        fill=rev(cols), bty="n", title='Land Cover', cex=1.3)
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Prediction from Learned Graph with 2006 Census Data')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_learned_prediction.png'); dev.off()
 ```
 
 How does each prediction compare to the observed data?
@@ -355,18 +360,22 @@ cols[2] <- '#000000'
 
 plot(dev2006 - output.expert.2006, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
      legend=FALSE)
-legend('bottomright', legend=c('Commission', 'Agreement', 'Ommission'),
-       fill=rev(cols), bty="n", title='Legend', cex=1.3)
+legend('bottomright', legend=c('Overestimated', 'Agreement', 'Underestimated'),
+       fill=cols, bty="n", title='Development Prediction', cex=1.3)
 title('2006 Expert Graph Prediction Subtracted from Observed Land Cover')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_observed_minus_expert.png'); dev.off()
 ```
 
 ```{r}
 plot(dev2006 - output.mmhc.2006, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
      legend=FALSE)
-legend('bottomright', legend=c('Commission', 'Agreement', 'Ommission'),
-       fill=rev(cols), bty="n", title='Legend', cex=1.3)
+legend('bottomright', legend=c('Overestimated', 'Agreement', 'Underestimated'),
+       fill=cols, bty="n", title='Development Prediction', cex=1.3)
 title('2006 Learned Graph Prediction Subtracted from Observed Land Cover')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_observed_minus_learned.png'); dev.off()
 ```
+
+Comparing the two differences to one another allows us to examine systematic bias in our model. Both the learned and the expert networks fail to predict high enough development in the same areas just outside the urban core. In addition, each network overestimates outlying (suburban) development in different areas. This indicates that the stochasticity in development predictions far from the urban core is too high while there is not a component in our model that accurately predicts development in a few, specific areas just outside the urban core.
 
 And how do the predictions compare to each other?
 
@@ -374,31 +383,39 @@ And how do the predictions compare to each other?
 plot(output.expert.2006 - output.mmhc.2006, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
      legend=FALSE)
 legend('bottomright', legend=c('Expert Prediction', 'Agreement', 'Learned Prediction'),
-       fill=rev(cols), bty="n", title='Legend', cex=1.3)
+       fill=rev(cols), bty="n", title='Extra Development', cex=1.3)
 title('2006 Expert Graph Prediction Subtracted from Learned Graph Prediction')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_expert_minus_learned.png'); dev.off()
 ```
 
 ## Transition Probabilities
 
 ```{r}
+# Figure out the order of the factors returned from the prior distribution (it isn't guaranteed to be in a predictable order); this is the order of the layers in the transition probabilties RasterStack
+labels <- c('0'='prob.undeveloped', '1'='prob.low.dev', '2'='prob.high.dev')
+labels. <- c()
+for (l in names(querygrain(prior, nodes='new')$new)) {
+  labels. <- c(labels., labels[as.numeric(l) + 1])
+}
+
 # Find transition probabilities for the expert graph
 trans.probs.expert <- raster::calc(layers, function (states) {
   trans <- matrix(nrow=dim(states)[1], ncol=3)
   for (i in seq(1, dim(states)[1])) {
-    trans[i,] <- as.numeric(querygrain(updateNetwork(prior, as.data.frame(t(states[i,]))),
-                                       nodes='new')$new)
+    trans[i,] <- querygrain(updateNetwork(prior, as.data.frame(t(states[i,]))),
+                            nodes='new')$new
   }
   return(trans)
 }, forcefun=TRUE)
-names(trans.probs.expert) <- c('prob.undeveloped', 'prob.low.dev', 'prob.high.dev')
+names(trans.probs.expert) <- labels.
 
 # Masking
 trans.probs.expert$prob.undeveloped <- mask(trans.probs.expert$prob.undeveloped,
-                                          layers$pop.density, maskvalue=NA)
+                                          layers$male.pop, maskvalue=NA)
 trans.probs.expert$prob.low.dev <- mask(trans.probs.expert$prob.low.dev,
-                                      layers$pop.density, maskvalue=NA)
+                                      layers$male.pop, maskvalue=NA)
 trans.probs.expert$prob.high.dev <- mask(trans.probs.expert$prob.high.dev,
-                                       layers$pop.density, maskvalue=NA)
+                                       layers$male.pop, maskvalue=NA)
 ```
 
 ```{r}
@@ -406,75 +423,105 @@ trans.probs.expert$prob.high.dev <- mask(trans.probs.expert$prob.high.dev,
 trans.probs.mmhc <- raster::calc(layers, function (states) {
   trans <- matrix(nrow=dim(states)[1], ncol=3)
   for (i in seq(1, dim(states)[1])) {
-    trans[i,] <- as.numeric(querygrain(updateNetwork(prior.mmhc, as.data.frame(t(states[i,]))),
-                                       nodes='new')$new)
+    trans[i,] <- querygrain(updateNetwork(prior.mmhc, as.data.frame(t(states[i,]))),
+                            nodes='new')$new
   }
   return(trans)
 }, forcefun=TRUE)
-names(trans.probs.mmhc) <- c('prob.undeveloped', 'prob.low.dev', 'prob.high.dev')
+names(trans.probs.mmhc) <- labels.
 
 # Masking
 trans.probs.mmhc$prob.undeveloped <- mask(trans.probs.mmhc$prob.undeveloped,
-                                          layers$pop.density, maskvalue=NA)
+                                          layers$male.pop, maskvalue=NA)
 trans.probs.mmhc$prob.low.dev <- mask(trans.probs.mmhc$prob.low.dev,
-                                      layers$pop.density, maskvalue=NA)
+                                      layers$male.pop, maskvalue=NA)
 trans.probs.mmhc$prob.high.dev <- mask(trans.probs.mmhc$prob.high.dev,
-                                       layers$pop.density, maskvalue=NA)
+                                       layers$male.pop, maskvalue=NA)
 
 
 save(trans.probs.mmhc, trans.probs.expert, file='rda/transitionProbs.rda')
 load(file='rda/transitionProbs.rda')
 ```
 
+### Expert Graph Transition Probabilities
+
+Now let's visualize these transition probabilities.
+
 ```{r}
+load(file='rda/caAggregates.rda')
+file.loc <- '/home/arthur/Workspace/TermProject/'
+counties <- readOGR(paste0(file.loc, 'ancillary/co26_d00_select_nad83.shp'),
+                    'co26_d00_select_nad83')
+counties <- spTransform(counties, crs(dev2001))
+
 require(RColorBrewer)
 cols <- brewer.pal(5, 'PuBuGn')
 cols[1] <- '#FFFFFF'
 
-image(trans.probs.expert$prob.undeveloped, axes=FALSE, zlim=c(0, 1),
-      xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
+image(trans.probs.expert$prob.undeveloped, bty='n', zlim=c(0, 1),
+      xlab='Easting (meters)', ylab='Northing (meters)',
+      col=cols, breaks=seq(0, 1, by=0.2))
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. Undeveloped', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Expert Graph Transition Probabilities: Undeveloped')
-
-image(trans.probs.mmhc$prob.undeveloped, axes=FALSE, zlim=c(0, 1),
-      xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
-legend('bottomright', fill=rev(cols), bty="n", title='Prob. Undeveloped', cex=1.3,
-       legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
-plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
-title('2006 Learned Graph Transition Probabilities: Undeveloped')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_expert_trans_probs_undeveloped.png'); dev.off()
 ```
 
 ```{r}
-image(trans.probs.expert$prob.low.dev, axes=FALSE, zlim=c(0, 1),
-      xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
+image(trans.probs.expert$prob.low.dev, bty='n', zlim=c(0, 1),
+      xlab='Easting (meters)', ylab='Northing (meters)',
+      col=cols, breaks=seq(0, 1, by=0.2))
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. Low Dev.', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Expert Graph Transition Probabilities: Low Development')
-
-image(trans.probs.mmhc$prob.low.dev, axes=FALSE, zlim=c(0, 1),
-      xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
-legend('bottomright', fill=rev(cols), bty="n", title='Prob. Low Dev.', cex=1.3,
-       legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
-plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
-title('2006 Learned Graph Transition Probabilities: Low Development')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_expert_trans_probs_lowdev.png'); dev.off()
 ```
 
 ```{r}
-image(trans.probs.expert$prob.high.dev, axes=FALSE, zlim=c(0, 1),
-      xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
+image(trans.probs.expert$prob.high.dev, bty='n', zlim=c(0, 1),
+      xlab='Easting (meters)', ylab='Northing (meters)',
+      col=cols, breaks=seq(0, 1, by=0.2))
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. High Dev.', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Expert Graph Transition Probabilities: High Development')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_expert_trans_probs_highdev.png'); dev.off()
+```
 
-image(trans.probs.mmhc$prob.high.dev, axes=FALSE, zlim=c(0, 1),
-      xlab='', ylab='', col=cols, breaks=seq(0, 1, by=0.2))
+### Learned Graph Transition Probabilities
+
+```{r}
+image(trans.probs.mmhc$prob.undeveloped, bty='n', zlim=c(0, 1),
+      xlab='Easting (meters)', ylab='Northing (meters)',
+      col=cols, breaks=seq(0, 1, by=0.2))
+legend('bottomright', fill=rev(cols), bty="n", title='Prob. Undeveloped', cex=1.3,
+       legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
+plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
+title('2006 Learned Graph Transition Probabilities: Undeveloped')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_learned_trans_probs_undeveloped.png'); dev.off()
+```
+
+```{r}
+image(trans.probs.mmhc$prob.low.dev, bty='n', zlim=c(0, 1),
+      xlab='Easting (meters)', ylab='Northing (meters)',
+      col=cols, breaks=seq(0, 1, by=0.2))
+legend('bottomright', fill=rev(cols), bty="n", title='Prob. Low Dev.', cex=1.3,
+       legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
+plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
+title('2006 Learned Graph Transition Probabilities: Low Development')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_learned_trans_probs_lowdev.png'); dev.off()
+```
+
+```{r}
+image(trans.probs.mmhc$prob.high.dev, bty='n', zlim=c(0, 1),
+      xlab='Easting (meters)', ylab='Northing (meters)',
+      col=cols, breaks=seq(0, 1, by=0.2))
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. High Dev.', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Learned Graph Transition Probabilities: High Development')
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_learned_trans_probs_highdev.png'); dev.off()
 ```
 

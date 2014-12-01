@@ -1,4 +1,4 @@
-library(sp, raster)
+library(data.table, sp, raster)
 library(rgdal)
 library(plyr, reshape2)
 library(bnlearn)
@@ -10,7 +10,7 @@ census.vars <- c('SE_T003_001', 'SE_T093_001', 'SE_T155_001', 'SE_T156_001', 'SE
 census.2010.vars <- c('SE_T002_002', 'SE_T068_001', 'SE_T069_001', 'SE_T069_002', 'SE_T002_006', 'SE_T058_001', 'SE_T058_002', 'SE_T058_003', 'SE_T058_005', 'SE_T058_006', 'SE_T063_003', 'SE_T063_004', 'SE_T063_006', 'SE_T063_007', 'SE_T063_009', 'SE_T063_011', 'SE_T063_012', 'SE_T063_013', 'SE_T055_001', 'SE_T003_002', 'SE_T003_003', 'SE_T054_002', 'SE_T054_003', 'SE_T054_005', 'SE_T063_016')
 acs.vars <- c('SE_T002_002', 'SE_T001_001', 'SE_T004_002', 'SE_T004_003', 'SE_T002_003', 'SE_T057_001', 'SE_T093_001', 'SE_T094_001', 'SE_T094_002', 'SE_T017_001', 'SE_T017_002', 'SE_T017_003', 'SE_T017_005', 'SE_T017_006', 'SE_T017_008', 'SE_T017_009', 'SE_T013_002', 'SE_T013_003', 'SE_T013_005', 'SE_T118_004')
 
-# =======================================
+#########################################
 # Reading in census and crosswalk tables
 census2000 <- read.csv('census_data/census2000.csv', header=T, skip=1,
                        colClasses=c('Geo_FIPS'='character')) # 2000 Census data
@@ -57,7 +57,7 @@ ggplot(data=melt(census2010, id.vars=c('Geo_FIPS')),
   geom_histogram() +
   facet_wrap(~ variable, scales='free')
 
-# ========================
+##########################
 # Normalizing census data
 survey2000 <- with(census2000.as.2010, data.frame(
   FIPS=Geo_FIPS,
@@ -135,7 +135,7 @@ survey2011 <- with(acs2008.2012, data.frame(
 # Clean-up
 remove(acs2006.2010, acs2008.2012, census2000, census2010, census2000.as.2010, temp, xwalk)
 
-# =================================================
+###################################################
 # Join census tract shapefiles and census measures
 require(rgdal)
 tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10_nad83.shp', 't10_nad83')
@@ -148,7 +148,7 @@ attr2006 <- merge(tracts, survey2006, by='FIPS')
 attr2010 <- merge(tracts, survey2010, by='FIPS')
 attr2011 <- merge(tracts, survey2011, by='FIPS')
 
-# ===========================================
+#############################################
 # Get and reclassify sample land cover layer
 file.loc <- '/home/arthur/Workspace/TermProject/'
 
@@ -170,8 +170,8 @@ rec.area.proximity <- raster::raster(paste0(file.loc,
 # Distance to primary roads
 road.proximity <- raster::raster(paste0(file.loc, 'ancillary/roads_proximity_cut.tiff'))
 
-# =========================================
-# Spatially Join Land Cover and Other Data
+###########################################
+# Spatially join land cover and other data
 
 # Raster and vector layers have just SLIGHTLY different projection definitions...
 require(rgdal)
@@ -223,8 +223,8 @@ remove(rrast2001, rast2006, tracts, attr2000, attr2006, dev2001, dev2006,
        devp2001, devp2006, rec.area.proximity, rec.proximities,
        road.proximity, road.proximities)
 
-#=======================
-# Discretizing the Data
+###############################
+# Finding correlated variables
 
 cases <- data.frame(t(combn(setdiff(colnames(training), c('new', 'FIPS')), 2)))
 
@@ -262,24 +262,29 @@ training.data <- subset(training, select=vars)
 vars <- c('new', names(dedup(training.data, 0.5)))
 training.data <- subset(training.data, select=vars)
 
-# Cannot discretize on the esalab computer! Don't do it! It always crashes.
-training.discrete <- cbind(data.frame(new=lapply(training.data$new, as.factor)),
-                           data.frame(old=lapply(training.data$old, as.factor)),
-                           bnlearn::discretize(training.data[,3:length(vars)],
-                                               breaks=rep(2, length(vars) - 2),
-                                               method='quantile'))
+########################
+# Discretizing the data
+
+# Creating a random sample...
+training.sample <- training.data[sample(nrow(training.data),
+                                        dim(training.data)[1]*0.1),]
+
+require(data.table)
+training.discrete <- data.table(bnlearn::discretize(training.sample[,3:length(vars)],
+                                                    breaks=rep(2, length(vars) - 2),
+                                                    method='quantile'))
+
+# Compare speed (and output size) of lapply() and sapply()
+training.discrete$new <- lapply(training.sample$new, as.factor)
+training.discrete$old <- lapply(training.sample$old, as.factor)
 
 save(training.data, training.discrete, file='rda/trainingData.rda')
 load(file='rda/trainingData.rda')
 
-remove(cases, training)
+remove(cases, training, training.data)
 
-# ===================================
+#####################################
 # Training the Bayesian Network (BN)
-
-# Creating a random sample...
-training.sample <- training.discrete[sample(nrow(training.discrete),
-                                        dim(training.discrete)[1]*0.1),]
 
 # It just so happens that the total number of cells is divisible by three; use floor() to be safe
 k <- floor(dim(training.sample)[1]/3)
@@ -339,8 +344,8 @@ expert.dag <- empty.graph(names(training.discrete))
 arcs(expert.dag) <- spec
 plot(expert.dag); title('Specified Network')
 
-#====================
-# Parameter Learning
+#####################
+# Parameter learning
 
 # How do the two learned model structures compare?
 score(mmhc.dag, data=training.sample3)

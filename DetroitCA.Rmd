@@ -89,7 +89,7 @@ rec.area.dist <- resample(rec.area.dist, dev2001)
 ## Rasterizing
 
 ```{r}
-vars <- c('married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
+vars <- c('med.hhold.income', 'male.pop')
 layers <- as.list(1:length(vars))
 names(layers) <- vars
 layers$old <- as.factor(dev2001)
@@ -108,9 +108,9 @@ load(file='rda/layers.rda')
 First, we want to mask out the pixels outside of the census tracts.
 
 ```{r}
-layers$old <- mask(dev2001, layers$pop.density, maskvalue=NA)
-layers$rec.area.proximity <- mask(layers$rec.area.proximity,
-                                  layers$pop.density, maskvalue=NA)
+layers$old <- raster::mask(dev2001, layers$male.pop, maskvalue=NA)
+layers$rec.area.proximity <- raster::mask(layers$rec.area.proximity,
+                                          layers$male.pop, maskvalue=NA)
 ```
 
 Next, we must discretize all the census and landscape layers.
@@ -118,11 +118,13 @@ Next, we must discretize all the census and landscape layers.
 ```{r}
 load(file='rda/graphs.rda')
 
+training.sample <- data.frame(training.sample)
+
 # Create a reclass matrix from the levels
-vars <- c('rec.area.proximity', 'married.hholds', 'med.hhold.income', 'pop.density', 'male.pop')
+vars <- c('rec.area.proximity', 'med.hhold.income', 'male.pop')
 for (var in vars) {
   # Split apart e.g. "(20.1,190]"
-  reclass.matrix <- sapply(levels(training.discrete[,var]),
+  reclass.matrix <- sapply(levels(training.sample[,var]),
                            function (s) as.numeric(unlist(strsplit(gsub('\\[|\\]|\\(|\\)',
                                                                         '', s), ','))))
   reclass.matrix[1] <- 0
@@ -136,6 +138,11 @@ for (var in vars) {
 
 ```{r}
 layers <- stack(layers)
+
+# TODO An improvement would be to have the levels of the layers be in [0, 1, 2, ...]
+layer.levels <- list(rec.area.proximity=levels(training.sample$rec.area.proximity),
+                     med.hhold.income=levels(training.sample$med.hhold.income),
+                     male.pop=levels(training.sample$male.pop))
 
 save(layers, layer.levels, file='rda/layerStack.rda')
 load(file='rda/layerStack.rda')
@@ -154,11 +161,9 @@ layers
 
 ```{r}
 # TODO An improvement would be to have the levels of the layers be in [0, 1, 2, ...]
-layer.levels <- list(rec.area.proximity=levels(training.discrete$rec.area.proximity),
-                     married.hholds=levels(training.discrete$married.hholds),
-                     med.hhold.income=levels(training.discrete$med.hhold.income),
-                     pop.density=levels(training.discrete$pop.density),
-                     male.pop=levels(training.discrete$male.pop))
+layer.levels <- list(rec.area.proximity=levels(training.sample$rec.area.proximity),
+                     med.hhold.income=levels(training.sample$med.hhold.income),
+                     male.pop=levels(training.sample$male.pop))
 
 # A function to update the posterior probability distribution with evidence
 updateNetwork <- function (jtree, states) {
@@ -168,9 +173,7 @@ updateNetwork <- function (jtree, states) {
   }
   
   evidence <- transform(states,
-                     married.hholds=layer.levels$married.hholds[married.hholds + 1],
                      med.hhold.income=layer.levels$med.hhold.income[med.hhold.income + 1],
-                     pop.density=layer.levels$pop.density[pop.density + 1],
                      male.pop=layer.levels$male.pop[male.pop + 1],
                      rec.area.proximity=layer.levels$rec.area.proximity[rec.area.proximity + 1],
                      old=as.character(old))
@@ -184,37 +187,70 @@ updateNetwork <- function (jtree, states) {
 
 # A function to choose outcomes, one at a time, with the same probability as the given posterior distribution
 chooseOutcome <- function (posterior) {
-  post <- as.numeric(posterior)
+  posterior <- sort(posterior)
+  
+  # Sort the posterior probabilties by factors, e.g. "1=0.56,0=0.44" becomes "0=0.44,1=0.56"
+  post <- numeric()
+  for (i in seq.int(1, length(posterior))) {
+    post[i] <- posterior[as.character(i - 1)]
+  }
+  
+  # Generate a vector of probability thresholds e.g. [0.0, 0.44] for transitions to [0, 1]; upper bound of p=1.0 is implied.
   prob <- rep(0, length(post))
-  for (i in seq(length(post) - 1, 1, by=-1)) {
+  for (i in seq.int(length(post) - 1, 1, by=-1)) {
     j <- length(post) - i
     prob <- prob + c(rep(0, j), post[(j-1):(length(post)-j)])
   }
   
+  # Generate a random uniform deviate on [0, 1] to determine which factor to output
   r <- runif(1)
-  for (i in seq(0, length(prob) - 2)) {
+  for (i in seq.int(0, length(prob) - 2)) {
     if (r < prob[i + 2]) {
-      return(i)
+      return(i) # p < threshold in e.g. [0, 0.44]? Output that factor
     }
   }
   
-  (length(prob) - 1)
+  (length(prob) - 1) # p < implied upper bound of 1.0? Output last factor
 }
 ```
 
 Does our function reproduce classes with the same proportion as in the probability distribution?
 
 ```{r}
-foo <- as.numeric(querygrain(prior, nodes='new')$new)
+load(file='rda/graphs.rda')
+
+require(gRain)
+prior <- compile(as.grain(fit.expert))
+
+foo <- querygrain(prior, nodes='new')$new
 bar <- c()
 for (i in seq(1, 10000)) { bar <- c(bar, chooseOutcome(foo)) }
-unique(bar)
-c(length(bar[bar==0])/length(bar), length(bar[bar==1])/length(bar), length(bar[bar==2])/length(bar))
-foo
+a <- c('0'=length(bar[bar==0])/length(bar), '1'=length(bar[bar==1])/length(bar), '2'=length(bar[bar==2])/length(bar))
+b <- c(foo['0'], foo['1'], foo['2'])
+
+a; b
+a - b
+```
+
+This function should be idempotent under any arbitary ordering of the input.
+
+```{r}
+foo <- querygrain(prior, nodes='new')$new
+sort(foo)
+bar <- c()
+for (i in seq(1, 10000)) { bar <- c(bar, chooseOutcome(foo)) }
+a <- c('0'=length(bar[bar==0])/length(bar), '1'=length(bar[bar==1])/length(bar), '2'=length(bar[bar==2])/length(bar))
+b <- c(foo['0'], foo['1'], foo['2'])
+
+a; b
+a - b
+
+remove(a, b, foo, bar, i)
 ```
 
 ```{r message=FALSE, warning=FALSE}
 load(file='rda/graphs.rda')
+load(file='rda/layerStack.rda')
 
 require(gRain)
 

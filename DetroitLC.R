@@ -307,8 +307,8 @@ plot(bnlearn::rsmax2(training.sample1));title('RSMAX2')
 # 2014-11-23
 # All of the network learning approaches produce a complete or near-complete graph when trained on the full dataset, subset by independent factors, or a random sample thereof. Worse still, no nodes have arcs directed towards new land cover. The complete graph can also be demonstrated to be inferior as it has a higher BIC relative to the more sparse, expert graph.
 
-dim(training.discrete[training.discrete$old != training.discrete$new,])[1]
-training.sample0 <- subset(training.discrete, !old == new)
+dim(training.sample[training.sample$old != training.sample$new,])[1]
+training.sample0 <- subset(training.sample, !old == new)
 plot(bnlearn::hc(training.sample0, restart=1));title('Hill-Climbing')
 plot(bnlearn::hc(training.sample0,
                  restart=5));title('Hill-Climbing; Restarts=5')
@@ -323,11 +323,16 @@ plot(bnlearn::hc(training.sample0,
 plot(bnlearn::rsmax2(training.sample0));title('Learned by RSMAX2')
 plot(bnlearn::mmhc(training.sample0));title('Learned by Max-Min Hill Climbing')
 
-mmhc.dag <- bnlearn::mmhc(training.sample0)
-
 # We'll reverse the direction of just the pop.density <- new arc
-mmhc.dag <- set.arc(mmhc.dag, 'pop.density', 'new')
+mmhc.dag <- bnlearn::mmhc(training.sample1)
+plot(mmhc.dag); title('Learned by Max-Min Hill Climbing')
+dev.copy(png, '~/Workspace/TermProject/outputs/graphics/bnlearn_graph_mmhc_unrevised.png')
+dev.off()
+
+mmhc.dag <- set.arc(mmhc.dag, 'old', 'new')
 plot(mmhc.dag); title('Learned by Max-Min Hill Climbing; Revised by Expert')
+dev.copy(png, '~/Workspace/TermProject/outputs/graphics/bnlearn_graph_mmhc_revised.png')
+dev.off()
 
 # 2014-11-23
 # When the data are trained on just that subset of pixels which have changed between 2001 and 2006, the graphs that are learned are still dense but the two hybrid algorithms produce a less dense graph that they agree on completely.
@@ -343,12 +348,16 @@ plot(bnlearn::rsmax2(training.sample0));title('Old < New; Learned by RSMAX2')
 dim(subset(training.discrete, ((old==1 | old==2) & new==0) | (new==1 & old==2))[1])
 
 # Now let's think about specifying an "expert" network structure...
-spec <- matrix(c('old', 'new', 'old', 'pop.density', 'old', 'rec.area.proximity', 'male.pop', 'married.hholds', 'pop.density', 'new', 'med.hhold.income', 'pop.density', 'med.hhold.income', 'new', 'married.hholds', 'med.hhold.income', 'married.hholds', 'new', 'rec.area.proximity', 'new', 'rec.area.proximity', 'pop.density', 'rec.area.proximity', 'med.hhold.income'),
-               ncol=2, byrow=TRUE)
+# spec <- matrix(c('old', 'new', 'old', 'pop.density', 'old', 'rec.area.proximity', 'male.pop', 'married.hholds', 'pop.density', 'new', 'med.hhold.income', 'pop.density', 'med.hhold.income', 'new', 'married.hholds', 'med.hhold.income', 'married.hholds', 'new', 'rec.area.proximity', 'new', 'rec.area.proximity', 'pop.density', 'rec.area.proximity', 'med.hhold.income'),
+#                ncol=2, byrow=TRUE)
 
-expert.dag <- empty.graph(names(training.discrete))
+spec <- matrix(c('old', 'new', 'old', 'rec.area.proximity', 'male.pop', 'new', 'male.pop', 'med.hhold.income', 'med.hhold.income', 'new', 'med.hhold.income', 'rec.area.proximity', 'rec.area.proximity', 'new'), ncol=2, byrow=TRUE)
+
+expert.dag <- empty.graph(names(training.sample1))
 arcs(expert.dag) <- spec
 plot(expert.dag); title('Specified Network')
+dev.copy(png, '~/Workspace/TermProject/outputs/graphics/bnlearn_graph_expert.png')
+dev.off()
 
 #####################
 # Parameter learning
@@ -361,7 +370,7 @@ score(expert.dag, data=training.sample3)
 fit.mmhc <- bn.fit(mmhc.dag, data=training.sample2, method='bayes')
 fit.expert <- bn.fit(expert.dag, data=training.sample2, method='bayes')
 
-save(mmhc.dag, expert.dag, fit.mmhc, fit.expert, training.discrete, file='rda/graphs.rda')
+save(mmhc.dag, expert.dag, fit.mmhc, fit.expert, training.sample, file='rda/graphs.rda')
 load(file='rda/graphs.rda')
 
 

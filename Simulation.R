@@ -8,7 +8,7 @@ options(stringsAsFactors=FALSE)
 FILE.LOC <- '/home/arthur/Workspace/TermProject/'
 CENSUS.VARS <- c('med.hhold.income', 'male.pop')
 VARS <- c(CENSUS.VARS, 'rec.area.proximity')
-ALL.VARS <- c(VARS, 'old', 'new')
+ALL.VARS <- c(VARS, 'old')
 
 #####################################
 # Data preparation and factorization
@@ -17,11 +17,12 @@ require(raster)
 load(file='rda/spatialMeasures.rda') # Load census measures and the 30-m land cover data
 load(file='rda/graphs.rda') # Load trained Bayesian network(s)
 
-factors.expert <- matrix(nrow=length(VARS), ncol=length(VARS))
+# TODO An improvement would be to have the levels of the layers be in [0, 1, 2, ...]
+factors <- matrix(nrow=length(VARS), ncol=length(VARS))
 for (i in seq.int(1, length(VARS))) {
-  factors.expert[i,] <- c(VARS[i], rownames(get(VARS[i], fit.expert)$prob))
+  factors[i,] <- c(VARS[i], rownames(get(VARS[i], fit.expert)$prob))
 }
-factors.expert <- data.frame(factors.expert[,2:length(VARS)], row.names=factors.expert[,1])
+factors <- data.frame(factors[,2:length(VARS)], row.names=factors[,1])
 
 ##############
 # Aggregation
@@ -31,7 +32,7 @@ dev2006 <- aggregate(dev2006, fact=10, fun=modal)
 dev2011 <- aggregate(dev2011, fact=10, fun=modal)
 
 save(dev2001, dev2006, dev2011, file='rda/caAggregates.rda')
-load(file='rda/caAggregates.rda') # Replace 30-m land cover data with aggregated data
+# load(file='rda/caAggregates.rda') # Replace 30-m land cover data with aggregated data
 
 # Recreation and outdoor areas
 rec.area.dist <- raster::raster(paste0(FILE.LOC,
@@ -41,13 +42,12 @@ rec.area.dist <- resample(rec.area.dist, dev2001)
 ##############
 # Rasterizing
 
-vars <- c('med.hhold.income', 'male.pop')
-layers <- as.list(1:length(vars))
-names(layers) <- vars
+layers <- as.list(1:length(CENSUS.VARS))
+names(layers) <- CENSUS.VARS
 layers$rec.area.proximity <- rec.area.dist
 
 # This is key! This is where the census attributes are set
-for (var in vars) {
+for (var in CENSUS.VARS) {
   layers[var] <- rasterize(attr2011, dev2011, var) # 2011 census
 }
 
@@ -57,19 +57,18 @@ for (var in vars) {
 # This is key! This is the "old" land cover
 layers$old <- raster::mask(dev2006, layers$male.pop, maskvalue=NA) # 2006 land cover
 layers$rec.area.proximity <- raster::mask(layers$rec.area.proximity,
-                                          layers$male.pop, maskvalue=NA)
+                                          get(CENSUS.VARS[1], layers), maskvalue=NA)
 
 save(layers, file='rda/predictionLayers2011.rda')
-load(file='rda/predictionLayers2011.rda')
+# load(file='rda/predictionLayers2011.rda')
 
 ###############
 # Discretizing
 
 # Create a reclass matrix from the levels
-vars <- c('rec.area.proximity', 'med.hhold.income', 'male.pop')
-for (var in vars) {
+for (var in VARS) {
   # Split apart e.g. "(20.1,190]"
-  reclass.matrix <- sapply(levels(training.sample[,var]),
+  reclass.matrix <- sapply(factors[var,],
                            function (s) as.numeric(unlist(strsplit(gsub('\\[|\\]|\\(|\\)',
                                                                         '', s), ','))))
   reclass.matrix[1] <- 0
@@ -82,39 +81,34 @@ for (var in vars) {
 # Stacking
 
 layers <- stack(layers)
-
-# TODO An improvement would be to have the levels of the layers be in [0, 1, 2, ...]
-layer.levels <- list(rec.area.proximity=levels(training.sample$rec.area.proximity),
-                     med.hhold.income=levels(training.sample$med.hhold.income),
-                     male.pop=levels(training.sample$male.pop))
-
-save(layers, layer.levels, file='rda/layerStack.rda')
-load(file='rda/layerStack.rda')
+save(layers, factors, file='rda/layerStack2011.rda')
+# load(file='rda/layerStack2011.rda')
 
 # Clean-up
-remove(var, vars, rec.area.dist, roads.dist, reclass.matrix)
+remove(i, var, vars, rec.area.dist, roads.dist, reclass.matrix)
 
 ####################
 # Utility functions
 
-# TODO An improvement would be to have the levels of the layers be in [0, 1, 2, ...]
-layer.levels <- list(rec.area.proximity=levels(training.sample$rec.area.proximity),
-                     med.hhold.income=levels(training.sample$med.hhold.income),
-                     male.pop=levels(training.sample$male.pop))
-
 # A function to update the posterior probability distribution with evidence
 updateNetwork <- function (jtree, states) {
+  states <- na.omit(states)
+
   # Do not do anything if the input data are all NA
-  if (all(is.na(states))) {
+  if (dim(states)[1] == 0) {
     return(jtree)
   }
 
-  evidence <- transform(states,
-                        med.hhold.income=layer.levels$med.hhold.income[med.hhold.income + 1],
-                        male.pop=layer.levels$male.pop[male.pop + 1],
-                        rec.area.proximity=layer.levels$rec.area.proximity[rec.area.proximity + 1],
-                        old=as.character(old))
+  # Translate the raster classes [0, 1, 2, ...] into factors
+  evidence <- data.frame(matrix(nrow=dim(states)[1], ncol=length(VARS)))
+  names(evidence) <- VARS
+  for (var in VARS) {
+    evidence[,var] <- t(factors[var,][states[,var] + 1])
+  }
 
+  evidence$old <- as.character(states[,'old'])
+
+  # TODO This might be parallelizable if I don't modify the jtree; rather, return the posterior as a copy
   for (i in seq(1, dim(evidence)[1])) {
     jtree <- setEvidence(jtree, nodes=names(evidence), nslist=mapply(list, evidence[i,]))
   }
@@ -154,7 +148,6 @@ chooseOutcome <- function (posterior) {
 # Simulation and prediction
 
 load(file='rda/graphs.rda')
-load(file='rda/layerStack.rda')
 
 require(gRain)
 
@@ -175,12 +168,63 @@ output.mmhc.2011 <- stackApply(layers, rep(1, length(names(layers))), function (
 output.mmhc.2011 <- mask(output.mmhc.2011, layers$male.pop, maskvalue=NA)
 output.expert.2011 <- mask(output.expert.2011, layers$male.pop, maskvalue=NA)
 
-save(output.mmhc.2006, output.expert.2006, file='rda/outputs2006.rda')
-load(file='rda/outputs2006.rda')
+save(output.mmhc.2011, output.expert.2011, file='rda/outputs2011.rda')
+# load(file='rda/outputs2011.rda')
+
+#########################################
+# Transition probabilities: Expert graph
+
+# Figure out the order of the factors returned from the prior distribution (it isn't guaranteed to be in a predictable order); this is the order of the layers in the transition probabilties RasterStack
+labels <- c('0'='prob.undeveloped', '1'='prob.low.dev', '2'='prob.high.dev')
+labels. <- c()
+for (l in names(querygrain(prior, nodes='new')$new)) {
+  labels. <- c(labels., labels[as.numeric(l) + 1])
+}
+
+# Find transition probabilities for the expert graph
+trans.probs.expert <- raster::calc(layers, function (states) {
+  trans <- matrix(nrow=dim(states)[1], ncol=3)
+  for (i in seq(1, dim(states)[1])) {
+    trans[i,] <- querygrain(updateNetwork(prior, as.data.frame(t(states[i,]))),
+                            nodes='new')$new
+  }
+  return(trans)
+}, forcefun=TRUE)
+names(trans.probs.expert) <- labels.
+
+# Masking
+trans.probs.expert$prob.undeveloped <- mask(trans.probs.expert$prob.undeveloped,
+                                            layers$male.pop, maskvalue=NA)
+trans.probs.expert$prob.low.dev <- mask(trans.probs.expert$prob.low.dev,
+                                        layers$male.pop, maskvalue=NA)
+trans.probs.expert$prob.high.dev <- mask(trans.probs.expert$prob.high.dev,
+                                         layers$male.pop, maskvalue=NA)
+
+##########################################
+# Transition probabilities: Learned graph
+
+# Find transition probabilities for the learned graph
+trans.probs.mmhc <- raster::calc(layers, function (states) {
+  trans <- matrix(nrow=dim(states)[1], ncol=3)
+  for (i in seq(1, dim(states)[1])) {
+    trans[i,] <- querygrain(updateNetwork(prior.mmhc, as.data.frame(t(states[i,]))),
+                            nodes='new')$new
+  }
+  return(trans)
+}, forcefun=TRUE)
+names(trans.probs.mmhc) <- labels.
+
+# Masking
+trans.probs.mmhc$prob.undeveloped <- mask(trans.probs.mmhc$prob.undeveloped,
+                                          layers$male.pop, maskvalue=NA)
+trans.probs.mmhc$prob.low.dev <- mask(trans.probs.mmhc$prob.low.dev,
+                                      layers$male.pop, maskvalue=NA)
+trans.probs.mmhc$prob.high.dev <- mask(trans.probs.mmhc$prob.high.dev,
+                                       layers$male.pop, maskvalue=NA)
 
 
-
-
+save(trans.probs.mmhc, trans.probs.expert, file='rda/transitionProbs2011.rda')
+# load(file='rda/transitionProbs2011.rda')
 
 
 

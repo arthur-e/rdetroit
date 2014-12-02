@@ -95,7 +95,6 @@ We'll first aggregate the land cover data to 300 meters.
 ```{r}
 dev2001 <- aggregate(dev2001, fact=10, fun=modal)
 dev2006 <- aggregate(dev2006, fact=10, fun=modal)
-dev2011 <- aggregate(dev2011, fact=10, fun=modal)
 save(dev2001, dev2006, file='rda/caAggregates.rda')
 ```
 
@@ -103,120 +102,9 @@ save(dev2001, dev2006, file='rda/caAggregates.rda')
 plot(dev2001); title('2001 Development Intensity at 300 meters')
 ```
 
-## Landscape and Census Data
-
-We'll grab the other spatial data we created when training the Bayesian network.
-
-```{r}
-file.loc <- '/home/arthur/Workspace/TermProject/'
-load(file='rda/spatialMeasures.rda')
-load(file='rda/caAggregates.rda') # Replace dev2001 and dev2006 with aggregated
-
-# Recreation and outdoor areas
-rec.area.dist <- raster::raster(paste0(file.loc,
-                                       'ancillary/rec+outdoor_nad83_prox_cut.tiff'))
-rec.area.dist <- resample(rec.area.dist, dev2001)
-```
-
-## Rasterizing
-
-```{r}
-vars <- c('med.hhold.income', 'male.pop')
-layers <- as.list(1:length(vars))
-names(layers) <- vars
-layers$old <- as.factor(dev2001)
-layers$rec.area.proximity <- rec.area.dist
-
-for (var in vars) {
-  layers[var] <- rasterize(attr2006, dev2006, var)
-}
-
-save(layers, file='rda/predictionLayers2006.rda')
-load(file='rda/predictionLayers2006.rda')
-```
-
-## Masking and Discretizing
-
-First, we want to mask out the pixels outside of the census tracts.
-
-```{r}
-layers$old <- raster::mask(dev2001, layers$male.pop, maskvalue=NA)
-layers$rec.area.proximity <- raster::mask(layers$rec.area.proximity,
-                                          layers$male.pop, maskvalue=NA)
-```
-
-Next, we must discretize all the census and landscape layers.
-
-```{r}
-load(file='rda/graphs.rda')
-
-training.sample <- data.frame(training.sample)
-
-# Create a reclass matrix from the levels
-vars <- c('rec.area.proximity', 'med.hhold.income', 'male.pop')
-for (var in vars) {
-  # Split apart e.g. "(20.1,190]"
-  reclass.matrix <- sapply(levels(training.sample[,var]),
-                           function (s) as.numeric(unlist(strsplit(gsub('\\[|\\]|\\(|\\)',
-                                                                        '', s), ','))))
-  reclass.matrix[1] <- 0
-  layers[var] <- raster::reclassify(get(var, layers),
-                                    cbind(reclass.matrix, c(0, 1)),
-                                    right=TRUE) # Intervals closed on right
-}
-```
-
-## Stacking
-
-```{r}
-layers <- stack(layers)
-
-# TODO An improvement would be to have the levels of the layers be in [0, 1, 2, ...]
-layer.levels <- list(rec.area.proximity=levels(training.sample$rec.area.proximity),
-                     med.hhold.income=levels(training.sample$med.hhold.income),
-                     male.pop=levels(training.sample$male.pop))
-
-save(layers, layer.levels, file='rda/layerStack2006.rda')
-load(file='rda/layerStack2006.rda')
-
-# Clean-up
-remove(var, vars, rec.area.dist, roads.dist, reclass.matrix)
-```
-
-We can see from the min and max values in the following output that all of our layers have been discretized.
-
-```{r}
-layers
-```
-
 # Examining the Network
 
 ```{r}
-# TODO An improvement would be to have the levels of the layers be in [0, 1, 2, ...]
-layer.levels <- list(rec.area.proximity=levels(training.sample$rec.area.proximity),
-                     med.hhold.income=levels(training.sample$med.hhold.income),
-                     male.pop=levels(training.sample$male.pop))
-
-# A function to update the posterior probability distribution with evidence
-updateNetwork <- function (jtree, states) {
-  # Do not do anything if the input data are all NA
-  if (all(is.na(states))) {
-    return(jtree)
-  }
-  
-  evidence <- transform(states,
-                     med.hhold.income=layer.levels$med.hhold.income[med.hhold.income + 1],
-                     male.pop=layer.levels$male.pop[male.pop + 1],
-                     rec.area.proximity=layer.levels$rec.area.proximity[rec.area.proximity + 1],
-                     old=as.character(old))
-  
-  for (i in seq(1, dim(evidence)[1])) {
-    jtree <- setEvidence(jtree, nodes=names(evidence), nslist=mapply(list, evidence[i,]))
-  }
-  
-  jtree
-}
-
 # A function to choose outcomes, one at a time, with the same probability as the given posterior distribution
 chooseOutcome <- function (posterior) {
   posterior <- sort(posterior)
@@ -303,7 +191,7 @@ querygrain(posterior, nodes='new')$new
 
 ```{r message=FALSE, warning=FALSE}
 load(file='rda/graphs.rda')
-load(file='rda/layerStack.rda')
+load(file='rda/layerStack2006.rda')
 
 require(gRain)
 
@@ -336,17 +224,20 @@ save(output.mmhc.2006, output.expert.2006, file='rda/outputs2006.rda')
 load(file='rda/outputs2006.rda')
 ```
 
+# Visualization
+
 What does our actual 2006 land cover look like?
 
 ```{r}
 load(file='rda/caAggregates.rda')
+
 file.loc <- '/home/arthur/Workspace/TermProject/'
 counties <- readOGR(paste0(file.loc, 'ancillary/co26_d00_select_nad83.shp'),
                     'co26_d00_select_nad83')
 counties <- spTransform(counties, crs(dev2001))
+cols <- c('#FFFFFF', '#AACCEE', '#113355')
 
 dev2006 <- mask(dev2006, layers$male.pop, maskvalue=NA)
-cols <- c('#FFFFFF', '#AACCEE', '#113355')
 
 plot(dev2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE)
 legend('bottomright', legend=c('High Development', 'Low Development', 'Undeveloped'),
@@ -470,8 +361,8 @@ trans.probs.mmhc$prob.high.dev <- mask(trans.probs.mmhc$prob.high.dev,
                                        layers$male.pop, maskvalue=NA)
 
 
-save(trans.probs.mmhc, trans.probs.expert, file='rda/transitionProbs.rda')
-load(file='rda/transitionProbs.rda')
+save(trans.probs.mmhc, trans.probs.expert, file='rda/transitionProbs2006.rda')
+load(file='rda/transitionProbs2006.rda')
 ```
 
 ### Expert Graph Transition Probabilities

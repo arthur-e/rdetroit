@@ -327,7 +327,8 @@ And how do the predictions compare to each other?
 
 ```{r}
 plot(output.expert.2006 - output.mmhc.2006, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
-     legend=FALSE)
+     legend=FALSE, xlab='Easting (meters)', ylab='Northing (meters)')
+axis(1); axis(2);
 legend('bottomright', legend=c('Expert Prediction', 'Agreement', 'Learned Prediction'),
        fill=rev(cols), bty="n", title='Extra Development', cex=1.3)
 title('2006 Expert Graph Prediction Subtracted from Learned Graph Prediction')
@@ -460,7 +461,7 @@ save(trans.probs.mmhc, trans.probs.expert, file='rda/transitionProbs2006.rda')
 load(file='rda/transitionProbs2006.rda')
 ```
 
-## Expert Graph Transition Probabilities
+## Visualizing Transition Probabilities
 
 Now let's visualize these transition probabilities.
 
@@ -474,72 +475,81 @@ counties <- spTransform(counties, crs(dev2001))
 require(RColorBrewer)
 cols <- brewer.pal(5, 'PuBuGn')
 cols[1] <- '#FFFFFF'
+```
 
-image(trans.probs.expert$prob.undeveloped, bty='n', zlim=c(0, 1),
+```{r}
+load(file='rda/transitionProbs2006.rda'); YEAR='2006'
+load(file='rda/transitionProbs2011.rda'); YEAR='2011'
+```
+
+### Expert Graph Transition Probabilities
+
+```{r}
+plot(trans.probs.expert$prob.undeveloped, bty='n', zlim=c(0, 1),
       xlab='Easting (meters)', ylab='Northing (meters)',
-      col=cols, breaks=seq(0, 1, by=0.2))
+      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE)
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. Undeveloped', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
-title('2006 Expert Graph Transition Probabilities: Undeveloped')
-# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_expert_trans_probs_undeveloped.png'); dev.off()
+title(paste0(YEAR, ' Expert Graph Transition Probabilities: Undeveloped'))
+# dev.copy(png, paste0('~/Workspace/TermProject/outputs/graphics/plot_', YEAR, '_expert_trans_probs_undeveloped.png')); dev.off()
 ```
 
 ```{r}
-image(trans.probs.expert$prob.low.dev, bty='n', zlim=c(0, 1),
+plot(trans.probs.expert$prob.low.dev, bty='n', zlim=c(0, 1),
       xlab='Easting (meters)', ylab='Northing (meters)',
-      col=cols, breaks=seq(0, 1, by=0.2))
+      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE)
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. Low Dev.', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
-title('2006 Expert Graph Transition Probabilities: Low Development')
-# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_expert_trans_probs_lowdev.png'); dev.off()
+title(paste0(YEAR, ' Expert Graph Transition Probabilities: Low Development'))
+# dev.copy(png, paste0('~/Workspace/TermProject/outputs/graphics/plot_', YEAR, '_expert_trans_probs_lowdev.png')); dev.off()
 ```
 
 ```{r}
-image(trans.probs.expert$prob.high.dev, bty='n', zlim=c(0, 1),
+plot(trans.probs.expert$prob.high.dev, bty='n', zlim=c(0, 1),
       xlab='Easting (meters)', ylab='Northing (meters)',
-      col=cols, breaks=seq(0, 1, by=0.2))
+      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE)
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. High Dev.', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
-title('2006 Expert Graph Transition Probabilities: High Development')
-# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_expert_trans_probs_highdev.png'); dev.off()
+title(paste0(YEAR, ' Expert Graph Transition Probabilities: High Development'))
+# dev.copy(png, paste0('~/Workspace/TermProject/outputs/graphics/plot_', YEAR, '_expert_trans_probs_highdev.png')); dev.off()
 ```
 
-## Learned Graph Transition Probabilities
+### Learned Graph Transition Probabilities
 
 ```{r}
-image(trans.probs.mmhc$prob.undeveloped, bty='n', zlim=c(0, 1),
+plot(trans.probs.mmhc$prob.undeveloped, bty='n', zlim=c(0, 1),
       xlab='Easting (meters)', ylab='Northing (meters)',
-      col=cols, breaks=seq(0, 1, by=0.2))
+      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE)
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. Undeveloped', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
-title('2006 Learned Graph Transition Probabilities: Undeveloped')
-# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_learned_trans_probs_undeveloped.png'); dev.off()
+title(paste0(YEAR, ' Learned Graph Transition Probabilities: Undeveloped'))
+# dev.copy(png, paste0('~/Workspace/TermProject/outputs/graphics/plot_', YEAR, '_learned_trans_probs_undeveloped.png')); dev.off()
 ```
 
 ```{r}
-image(trans.probs.mmhc$prob.low.dev, bty='n', zlim=c(0, 1),
+plot(trans.probs.mmhc$prob.low.dev, bty='n', zlim=c(0, 1),
       xlab='Easting (meters)', ylab='Northing (meters)',
-      col=cols, breaks=seq(0, 1, by=0.2))
+      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE)
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. Low Dev.', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
-title('2006 Learned Graph Transition Probabilities: Low Development')
-# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_learned_trans_probs_lowdev.png'); dev.off()
+title(paste0(YEAR, ' Learned Graph Transition Probabilities: Low Development'))
+# dev.copy(png, paste0('~/Workspace/TermProject/outputs/graphics/plot_', YEAR, '_learned_trans_probs_lowdev.png')); dev.off()
 ```
 
 ```{r}
-image(trans.probs.mmhc$prob.high.dev, bty='n', zlim=c(0, 1),
+plot(trans.probs.mmhc$prob.high.dev, bty='n', zlim=c(0, 1),
       xlab='Easting (meters)', ylab='Northing (meters)',
-      col=cols, breaks=seq(0, 1, by=0.2))
+      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE)
 legend('bottomright', fill=rev(cols), bty="n", title='Prob. High Dev.', cex=1.3,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
-title('2006 Learned Graph Transition Probabilities: High Development')
-# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_learned_trans_probs_highdev.png'); dev.off()
+title(paste0(YEAR, ' Learned Graph Transition Probabilities: High Development'))
+# dev.copy(png, paste0('~/Workspace/TermProject/outputs/graphics/plot_', YEAR, '_learned_trans_probs_highdev.png')); dev.off()
 ```
 
 ## Comparing Transition Probabilities

@@ -150,6 +150,8 @@ attr2006 <- merge(tracts, survey2006, by='FIPS')
 attr2010 <- merge(tracts, survey2010, by='FIPS')
 attr2011 <- merge(tracts, survey2011, by='FIPS')
 
+remove(survey2000, survey2006, survey2010, survey2011)
+
 #############################################
 # Get and reclassify sample land cover layer
 file.loc <- '/home/arthur/Workspace/TermProject/'
@@ -181,7 +183,7 @@ attr2000 <- sp::spTransform(attr2000, raster::crs(dev2001))
 attr2006 <- sp::spTransform(attr2006, raster::crs(dev2001))
 attr2011 <- sp::spTransform(attr2011, raster::crs(dev2011))
 
-save(dev2001, dev2006, attr2000, attr2006, file='rda/spatialMeasures.rda')
+save(dev2001, dev2006, dev2011, attr2000, attr2006, attr2011, file='rda/spatialMeasures.rda')
 
 devp2001 <- SpatialPoints(as.data.frame(dev2001, xy=TRUE)[,1:2],
                           proj4string=crs(attr2000))
@@ -202,6 +204,9 @@ rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity, dev
 save(road.proximities, rec.proximities, attr2000, attr2006, attr2011,
      devp2001, devp2006, devp2011, file='rda/bnData.rda')
 load(file='rda/bnData.rda')
+
+########################
+# Prepare training data
 
 # Assume that the rows are in order; we align the land cover pixels with the attributes we just sampled (Naive, but R leaves us with no choice)
 require(plyr)

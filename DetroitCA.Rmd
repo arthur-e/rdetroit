@@ -525,3 +525,30 @@ title('2006 Learned Graph Transition Probabilities: High Development')
 # dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_learned_trans_probs_highdev.png'); dev.off()
 ```
 
+### Comparing Transition Probabilities
+
+Comparing transition probabilties between the two graphs provides further insight into the model's function. While there are some noticeable differences in the transition probabilities for low- and no-development, there are only very small differences between the transition probabilities in each graph for high development. Alternatively, it can be said that the high-development transition map has less variance than the others.
+
+```{r}
+require(RColorBrewer)
+cols <- brewer.pal(5, 'RdYlBu')
+cols <- c(cols[1], cols[1], '#FFFFFF', cols[5], cols[5])
+
+image(trans.probs.expert$prob.high.dev - trans.probs.mmhc$prob.high.dev, col=cols,
+      breaks=seq(-0.1, 0.1, by=0.04), bty='n')
+legend('bottomright', fill=rev(c(cols[1], cols[3], cols[5])),
+       bty="n", title='Prob. High Dev.', cex=1.3,
+       legend=c("Expert Prediction", "Near Agreement", "Learned Prediction"))
+plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
+title('2006 High-Dev. Transition Probabilities: Expert Minus Learned')
+```
+
+```{r}
+par(mfrow=c(2,2))
+hist(trans.probs.expert$prob.undeveloped - trans.probs.mmhc$prob.undeveloped,
+     main='Probability Undeveloped', breaks=seq(-0.2, 0.2, by=0.01))
+hist(trans.probs.expert$prob.low.dev - trans.probs.mmhc$prob.low.dev,
+     main='Probability Low-Development', breaks=seq(-0.2, 0.2, by=0.01))
+hist(trans.probs.expert$prob.high.dev - trans.probs.mmhc$prob.high.dev,
+     main='Probability High-Development', breaks=seq(-0.2, 0.2, by=0.01))
+```

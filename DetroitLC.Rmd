@@ -108,7 +108,7 @@ Variable names are given in parentheses as (2000 Census, 2010 Census, American C
 
 ```{r installation, eval=FALSE}
 install.packages(c('bnlearn', 'reshape2', 'plyr', 'ggplot2', 'sp',
-                   'raster', 'rgdal', 'RColorBrewer'))
+                   'raster', 'rgdal', 'RColorBrewer', 'parallel', 'irr'))
 
 # We have to use Bioconductor to install gRain dependencies
 source('http://bioconductor.org/biocLite.R')
@@ -384,12 +384,9 @@ for (i in seq(3, length(vars), by=1)) {
     l.fast.iamb <- c(l.fast.iamb, as.numeric(fi.elapsed['elapsed']))
   }
 }
-
-save(l.params, l.fast.iamb, l.iamb, file='rda/docTimeComplexity.rda')
 ```
 
 ```{r}
-load(file='rda/docTimeComplexity.rda')
 par(mfrow=c(1,2))
 plot(l.params, l.fast.iamb, log='y', xlab='Number of parameters, N', ylab='log10 Time in seconds')
 title('Fast IAMB Network Learning')

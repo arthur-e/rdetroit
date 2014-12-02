@@ -321,7 +321,6 @@ legend('bottomright', legend=c('High Development', 'Low Development', 'Undevelop
        fill=rev(cols), bty="n", title='Land Cover', cex=1.3)
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title('2006 Observed Land Cover from NLCD')
-
 # dev.copy(png, '~/Workspace/TermProject/outputs/graphics/plot_2006_observed_from_nlcd.png'); dev.off()
 ```
 
@@ -552,3 +551,52 @@ hist(trans.probs.expert$prob.low.dev - trans.probs.mmhc$prob.low.dev,
 hist(trans.probs.expert$prob.high.dev - trans.probs.mmhc$prob.high.dev,
      main='Probability High-Development', breaks=seq(-0.2, 0.2, by=0.01))
 ```
+
+# Validation
+
+```{r}
+load(file='rda/caAggregates.rda') # Replace dev2001 and dev2006 with aggregated
+dev2006 <- mask(dev2006, output.expert.2006, maskvalue=NA)
+
+# cols <- c('#FFFFFF', '#AACCEE', '#113355')
+# plot(output.mmhc.2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE)
+pts <- as.data.frame(output.expert.2006, xy=TRUE)
+pts$layer <- NULL
+# points(pts, col='red')
+
+stats <- data.frame(matrix(nrow=3, ncol=5), row.names=c('observed', 'expert', 'learned'))
+names(stats) <- c('Cohens.Kappa', 'Undev.freq', 'Low.dev.freq', 'High.dev.freq', 'Compactness')
+
+require(raster)
+samples.observed <- extract(dev2006, pts, df=TRUE, factors=TRUE)
+samples.mmhc.2006 <- extract(output.mmhc.2006, pts, df=TRUE, factors=TRUE)
+samples.expert.2006 <- extract(output.expert.2006, pts, df=TRUE, factors=TRUE)
+```
+
+## Agreement with Observed
+
+What is the agreement between the expert prediction and the observed?
+
+```{r}
+require(lpSolve, irr)
+stats['expert', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed$layer,
+                                                     guess=samples.expert.2006$layer))$value
+stats['learned', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed$layer,
+                                                      guess=samples.mmhc.2006$layer))$value
+```
+
+## Class Frequencies
+
+```{r}
+stats['observed', 'Undev.freq'] <- count(samples.observed, 'layer')[1,]$freq
+stats['observed', 'Low.dev.freq'] <- count(samples.observed, 'layer')[2,]$freq
+stats['observed', 'High.dev.freq'] <- count(samples.observed, 'layer')[3,]$freq
+stats['learned', 'Undev.freq'] <- count(samples.mmhc.2006, 'layer')[1,]$freq
+stats['learned', 'Low.dev.freq'] <- count(samples.mmhc.2006, 'layer')[2,]$freq
+stats['learned', 'High.dev.freq'] <- count(samples.mmhc.2006, 'layer')[3,]$freq
+stats['expert', 'Undev.freq'] <- count(samples.expert.2006, 'layer')[1,]$freq
+stats['expert', 'Low.dev.freq'] <- count(samples.expert.2006, 'layer')[2,]$freq
+stats['expert', 'High.dev.freq'] <- count(samples.expert.2006, 'layer')[3,]$freq
+```
+
+

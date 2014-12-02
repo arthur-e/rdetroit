@@ -13,31 +13,15 @@ ALL.VARS <- c(VARS, 'old', 'new')
 #####################################
 # Data preparation and factorization
 
-# Load census measures and the 30-m land cover data
 require(raster)
-# Recreation and outdoor areas
-rec.area.proximity <- raster::raster(paste0(FILE.LOC,
-                                            'ancillary/rec+outdoor_nad83_prox_cut.tiff'))
+load(file='rda/spatialMeasures.rda') # Load census measures and the 30-m land cover data
+load(file='rda/graphs.rda') # Load trained Bayesian network(s)
 
-load(file='rda/spatialMeasures.rda')
-# load(file='rda/bnData.rda') # Replace attr* with data frames
-
-# Extract census and landscape measures at the resolution of the land cover data
-# devp2011 <- SpatialPoints(as.data.frame(dev2011, xy=TRUE)[,1:2],
-#                           proj4string=crs(attr2011))
-# attr2011 <- sp::over(devp2011, attr2011)
-# rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity, devp2001))
-
-# We need to get the factor levels that were used in training the network
-require(plyr)
-training <- as.data.frame(subset(attr2011, select=CENSUS.VARS))
-training$med.hhold.income <- as.numeric(training$med.hhold.income)
-training$rec.area.proximity=rec.proximities$rec.area.proximity
-
-require(bnlearn)
-training.discrete <- bnlearn::discretize(na.omit(training),
-                                         breaks=rep(2, dim(training)[2]),
-                                         method='quantile')
+factors.expert <- matrix(nrow=length(VARS), ncol=length(VARS))
+for (i in seq.int(1, length(VARS))) {
+  factors.expert[i,] <- c(VARS[i], rownames(get(VARS[i], fit.expert)$prob))
+}
+factors.expert <- data.frame(factors.expert[,2:length(VARS)], row.names=factors.expert[,1])
 
 ##############
 # Aggregation
@@ -48,6 +32,10 @@ dev2011 <- aggregate(dev2011, fact=10, fun=modal)
 
 save(dev2001, dev2006, dev2011, file='rda/caAggregates.rda')
 load(file='rda/caAggregates.rda') # Replace 30-m land cover data with aggregated data
+
+# Recreation and outdoor areas
+rec.area.dist <- raster::raster(paste0(FILE.LOC,
+                                       'ancillary/rec+outdoor_nad83_prox_cut.tiff'))
 rec.area.dist <- resample(rec.area.dist, dev2001)
 
 ##############

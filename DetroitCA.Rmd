@@ -43,7 +43,7 @@ reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
                          byrow=TRUE, ncol=3)
 dev2001 <- raster::reclassify(rast2001, reclass.matrix, right=TRUE) # Intervals closed on right
 dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
-dev2011 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
+dev2011 <- raster::reclassify(rast2011, reclass.matrix, right=TRUE)
 ```
 
 ## Visualizing Change
@@ -61,20 +61,31 @@ counties <- spTransform(counties, crs(dev2001))
 
 # Difference image
 diff0601 <- dev2006 - dev2001
+diff1106 <- dev2011 - dev2006
 
 require(RColorBrewer)
-cols <- brewer.pal(5, 'Accent')
-cols <- c(cols[1], '#FFFFFF00', cols[4], cols[5])
+cols <- brewer.pal(5, 'RdYlBu')
+cols <- c(cols[1], '#EEEEEE00', cols[4], '#77DD00')
 
-#cols <- c('#77DD00', '#FFFFFF00', '#113355')
-#par(mfrow=c(2,1))
-plot(counties, col='#AAAAAA', legend=FALSE)
+plot(counties, col='#333333', border='#FFFFFF',
+     xlab='Easting (meters)', ylab='Northing (meters)')
 plot(diff0601, breaks=c(-2, -1, 0, 1, 2), add=TRUE,
-     col=cols)
-legend('bottomright', fill=rev(cols), title='New Development',
-       legend=c('High-Intensity', 'Low-Intensity', 'No Change', 'Negative Change'))
+     col=cols, colNA='#333333', legend=FALSE)
+axis(1); axis(2)
 title('Change in Metro Detroit Development at 30m, 2001-2006')
-#par(mfrow=c(1,1))
+legend('bottomright', fill=rev(cols), title='New Development', bty='n', cex=1.3,
+       legend=c('High-Intensity', 'Low-Intensity', 'No Change', 'Negative Change'))
+```
+
+```{r}
+plot(counties, col='#333333', border='#FFFFFF',
+     xlab='Easting (meters)', ylab='Northing (meters)')
+plot(diff1106, breaks=c(-2, -1, 0, 1, 2), add=TRUE,
+     col=cols, colNA='#333333', legend=FALSE)
+axis(1); axis(2)
+title('Change in Metro Detroit Development at 30m, 2006-2011')
+legend('bottomright', fill=rev(cols), title='New Development', bty='n', cex=1.3,
+       legend=c('High-Intensity', 'Low-Intensity', 'No Change', 'Negative Change'))
 ```
 
 ## Aggregation

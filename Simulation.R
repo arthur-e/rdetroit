@@ -2,29 +2,37 @@ library(sp, raster)
 library(rgdal)
 library(plyr, reshape2)
 library(bnlearn)
-
 setwd('/usr/local/dev/rdetroit/')
 options(stringsAsFactors=FALSE)
+
+FILE.LOC <- '/home/arthur/Workspace/TermProject/'
+CENSUS.VARS <- c('med.hhold.income', 'male.pop')
+VARS <- c(CENSUS.VARS, 'rec.area.proximity')
+ALL.VARS <- c(VARS, 'old', 'new')
 
 #####################################
 # Data preparation and factorization
 
-file.loc <- '/home/arthur/Workspace/TermProject/'
-
 # Load census measures and the 30-m land cover data
 require(raster)
-load(file='rda/spatialMeasures.rda')
-
 # Recreation and outdoor areas
-rec.area.dist <- raster::raster(paste0(file.loc,
-                                       'ancillary/rec+outdoor_nad83_prox_cut.tiff'))
+rec.area.proximity <- raster::raster(paste0(FILE.LOC,
+                                            'ancillary/rec+outdoor_nad83_prox_cut.tiff'))
 
+load(file='rda/spatialMeasures.rda')
+# load(file='rda/bnData.rda') # Replace attr* with data frames
+
+# Extract census and landscape measures at the resolution of the land cover data
+# devp2011 <- SpatialPoints(as.data.frame(dev2011, xy=TRUE)[,1:2],
+#                           proj4string=crs(attr2011))
+# attr2011 <- sp::over(devp2011, attr2011)
+# rec.proximities <- data.frame(rec.area.proximity=extract(rec.area.proximity, devp2001))
+
+# We need to get the factor levels that were used in training the network
 require(plyr)
-attr2011 <- subset(attr2011, select=c('med.hhold.income', 'male.pop'))
-
-training <- as.data.frame(attr2011)
-training$rec.area.proximity=as.data.frame(rec.area.dist)[1]
+training <- as.data.frame(subset(attr2011, select=CENSUS.VARS))
 training$med.hhold.income <- as.numeric(training$med.hhold.income)
+training$rec.area.proximity=rec.proximities$rec.area.proximity
 
 require(bnlearn)
 training.discrete <- bnlearn::discretize(na.omit(training),
@@ -33,24 +41,6 @@ training.discrete <- bnlearn::discretize(na.omit(training),
 
 ##############
 # Aggregation
-
-require(raster)
-rast2001 <- raster::raster(paste0(file.loc, 'nlcd2001_nad83.tif'))
-rast2006 <- raster::raster(paste0(file.loc, 'nlcd2006_nad83.tif'))
-rast2011 <- raster::raster(paste0(file.loc, 'nlcd2011_nad83.tif'))
-reclass.matrix <- matrix(c(c(0,10,0), c(10,11,NA), c(12,20,0),
-                           c(20,23,1), c(23,24,2), c(24,99,0)),
-                         byrow=TRUE, ncol=3)
-dev2001 <- raster::reclassify(rast2001, reclass.matrix, right=TRUE) # Intervals closed on right
-dev2006 <- raster::reclassify(rast2006, reclass.matrix, right=TRUE)
-dev2011 <- raster::reclassify(rast2011, reclass.matrix, right=TRUE)
-
-remove(rast2001, rast2006, rast2011)
-
-file.loc <- '/home/arthur/Workspace/TermProject/'
-counties <- readOGR(paste0(file.loc, 'ancillary/co26_d00_select_nad83.shp'),
-                    'co26_d00_select_nad83')
-counties <- spTransform(counties, crs(dev2001))
 
 dev2001 <- aggregate(dev2001, fact=10, fun=modal)
 dev2006 <- aggregate(dev2006, fact=10, fun=modal)

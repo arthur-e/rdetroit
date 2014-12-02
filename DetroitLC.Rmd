@@ -142,6 +142,7 @@ The spatial data need to be transformed to a common projection, [NAD83 UTM zone 
 FILE_LOC=/home/arthur/Workspace/TermProject/
 gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline $FILE_LOC/nlcd2001.tif $FILE_LOC/nlcd2001_nad83.tif
 gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline $FILE_LOC/nlcd2006.tif $FILE_LOC/nlcd2006_nad83.tif
+gdalwarp -t_srs "EPSG:26917" -cutline /usr/local/dev/rdetroit/shp/t10_nad83.shp -cl "t10_nad83" -crop_to_cutline $FILE_LOC/nlcd2011.tif $FILE_LOC/nlcd2011_nad83.tif
 
 wget http://www2.census.gov/geo/tiger/PREVGENZ/co/co00shp/co26_d00_shp.zip
 unzip co26_d00_shp.zip

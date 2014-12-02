@@ -42,6 +42,10 @@ With the "superior" model selected, I want to try:
 * Class area per census tract
 * Clustering (compactness)
 
+# Future Fixes
+
+* Some census tracts are missing from the 2006 data...?
+
 # Background
 
 ## Bayesian Networks

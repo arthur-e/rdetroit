@@ -561,13 +561,13 @@ require(RColorBrewer)
 cols <- brewer.pal(5, 'RdYlBu')
 cols <- c(cols[1], cols[1], '#FFFFFF', cols[5], cols[5])
 
-image(trans.probs.expert$prob.high.dev - trans.probs.mmhc$prob.high.dev, col=cols,
-      breaks=seq(-0.1, 0.1, by=0.04), bty='n')
+plot(trans.probs.expert$prob.high.dev - trans.probs.mmhc$prob.high.dev, col=cols,
+      breaks=seq(-0.1, 0.1, by=0.04), bty='n', box=FALSE, legend=FALSE)
 legend('bottomright', fill=rev(c(cols[1], cols[3], cols[5])),
        bty="n", title='Prob. High Dev.', cex=1.3,
        legend=c("Expert Prediction", "Near Agreement", "Learned Prediction"))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
-title('2006 High-Dev. Transition Probabilities: Expert Minus Learned')
+title(paste0(YEAR, ' High-Dev. Transition Probabilities: Expert Minus Learned'))
 ```
 
 ```{r}
@@ -606,7 +606,9 @@ samples.expert.2006 <- extract(output.expert.2006, pts, df=TRUE, factors=TRUE)
 What is the agreement between the expert prediction and the observed?
 
 ```{r}
-require(lpSolve, irr)
+require(lpSolve)
+require(irr)
+
 stats['expert', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed$layer,
                                                      guess=samples.expert.2006$layer))$value
 stats['learned', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed$layer,

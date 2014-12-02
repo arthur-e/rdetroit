@@ -226,7 +226,65 @@ trans.probs.mmhc$prob.high.dev <- mask(trans.probs.mmhc$prob.high.dev,
 save(trans.probs.mmhc, trans.probs.expert, file='rda/transitionProbs2011.rda')
 # load(file='rda/transitionProbs2011.rda')
 
+#############
+# Validation
 
+load(file='rda/caAggregates.rda') # Replace dev* with aggregated
 
+# Mask by our prediction for a fair comparison
+dev2006 <- mask(dev2006, output.expert.2006, maskvalue=NA)
+dev2011 <- mask(dev2011, output.expert.2011, maskvalue=NA)
+
+# cols <- c('#FFFFFF', '#AACCEE', '#113355')
+# plot(output.mmhc.2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE)
+pts <- as.data.frame(output.expert.2006, xy=TRUE)
+pts$layer <- NULL
+# points(pts, col='red')
+
+stats <- data.frame(matrix(nrow=6, ncol=5),
+                    row.names=c('2006.observed', '2006.expert', '2006.learned',
+                                '2011.observed', '2011.expert', '2011.learned'))
+names(stats) <- c('Cohens.Kappa', 'Undev.freq', 'Low.dev.freq', 'High.dev.freq', 'Compactness')
+
+require(raster)
+samples.observed.2006 <- extract(dev2006, pts, df=TRUE, factors=TRUE)
+samples.mmhc.2006 <- extract(output.mmhc.2006, pts, df=TRUE, factors=TRUE)
+samples.expert.2006 <- extract(output.expert.2006, pts, df=TRUE, factors=TRUE)
+samples.observed.2011 <- extract(dev2011, pts, df=TRUE, factors=TRUE)
+samples.mmhc.2011 <- extract(output.mmhc.2011, pts, df=TRUE, factors=TRUE)
+samples.expert.2011 <- extract(output.expert.2011, pts, df=TRUE, factors=TRUE)
+
+# Cohen's kappa
+require(lpSolve)
+require(irr)
+stats['2006.expert', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed.2006$layer,
+                                          guess=samples.expert.2006$layer))$value
+stats['2006.learned', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed.2006$layer,
+                                          guess=samples.mmhc.2006$layer))$value
+stats['2011.expert', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed.2011$layer,
+                                                          guess=samples.expert.2011$layer))$value
+stats['2011.learned', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed.2011$layer,
+                                                           guess=samples.mmhc.2011$layer))$value
+
+# Class frequencies
+stats['2006.observed', 'Undev.freq'] <- count(samples.observed.2006, 'layer')[1,]$freq
+stats['2006.observed', 'Low.dev.freq'] <- count(samples.observed.2006, 'layer')[2,]$freq
+stats['2006.observed', 'High.dev.freq'] <- count(samples.observed.2006, 'layer')[3,]$freq
+stats['2006.learned', 'Undev.freq'] <- count(samples.mmhc.2006, 'layer')[1,]$freq
+stats['2006.learned', 'Low.dev.freq'] <- count(samples.mmhc.2006, 'layer')[2,]$freq
+stats['2006.learned', 'High.dev.freq'] <- count(samples.mmhc.2006, 'layer')[3,]$freq
+stats['2006.expert', 'Undev.freq'] <- count(samples.expert.2006, 'layer')[1,]$freq
+stats['2006.expert', 'Low.dev.freq'] <- count(samples.expert.2006, 'layer')[2,]$freq
+stats['2006.expert', 'High.dev.freq'] <- count(samples.expert.2006, 'layer')[3,]$freq
+
+stats['2011.observed', 'Undev.freq'] <- count(samples.observed.2011, 'layer')[1,]$freq
+stats['2011.observed', 'Low.dev.freq'] <- count(samples.observed.2011, 'layer')[2,]$freq
+stats['2011.observed', 'High.dev.freq'] <- count(samples.observed.2011, 'layer')[3,]$freq
+stats['2011.learned', 'Undev.freq'] <- count(samples.mmhc.2011, 'layer')[1,]$freq
+stats['2011.learned', 'Low.dev.freq'] <- count(samples.mmhc.2011, 'layer')[2,]$freq
+stats['2011.learned', 'High.dev.freq'] <- count(samples.mmhc.2011, 'layer')[3,]$freq
+stats['2011.expert', 'Undev.freq'] <- count(samples.expert.2011, 'layer')[1,]$freq
+stats['2011.expert', 'Low.dev.freq'] <- count(samples.expert.2011, 'layer')[2,]$freq
+stats['2011.expert', 'High.dev.freq'] <- count(samples.expert.2011, 'layer')[3,]$freq
 
 

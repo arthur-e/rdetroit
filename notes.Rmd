@@ -11,6 +11,7 @@ output: html_document
 - [x] **Did I use the total population variable instead of population density in the 2006-2010 ACS?**
 - [x] Re-learn the network from discretized data???
 - [x] Check CPTs for explanatory relationships that make sense.
+- [ ] Get references for land cover change 2006-2011 in Oakland, Wayne, Macomb counties
 
 ## Training
 
@@ -30,8 +31,6 @@ With the "superior" model selected, I want to try:
 - Using only the 2001-2006 changed data to train the network.
 - Using a much higher proportion of the data to train the network.
 - Using finer discretization (more quantiles for each parameter).
-
-## Prediction
 
 ### Expert versus Learned Network
 

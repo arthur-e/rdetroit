@@ -131,8 +131,8 @@ for (var in vars) {
   layers[var] <- rasterize(attr2006, dev2006, var)
 }
 
-save(layers, file='rda/layers.rda')
-load(file='rda/layers.rda')
+save(layers, file='rda/predictionLayers2006.rda')
+load(file='rda/predictionLayers2006.rda')
 ```
 
 ## Masking and Discretizing
@@ -176,8 +176,8 @@ layer.levels <- list(rec.area.proximity=levels(training.sample$rec.area.proximit
                      med.hhold.income=levels(training.sample$med.hhold.income),
                      male.pop=levels(training.sample$male.pop))
 
-save(layers, layer.levels, file='rda/layerStack.rda')
-load(file='rda/layerStack.rda')
+save(layers, layer.levels, file='rda/layerStack2006.rda')
+load(file='rda/layerStack2006.rda')
 
 # Clean-up
 remove(var, vars, rec.area.dist, roads.dist, reclass.matrix)

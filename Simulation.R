@@ -230,6 +230,8 @@ save(trans.probs.mmhc, trans.probs.expert, file='rda/transitionProbs2011.rda')
 # Validation
 
 load(file='rda/caAggregates.rda') # Replace dev* with aggregated
+load(file='rda/outputs2006.rda')
+load(file='rda/outputs2011.rda')
 
 # Mask by our prediction for a fair comparison
 dev2006 <- mask(dev2006, output.expert.2006, maskvalue=NA)
@@ -287,4 +289,5 @@ stats['2011.expert', 'Undev.freq'] <- count(samples.expert.2011, 'layer')[1,]$fr
 stats['2011.expert', 'Low.dev.freq'] <- count(samples.expert.2011, 'layer')[2,]$freq
 stats['2011.expert', 'High.dev.freq'] <- count(samples.expert.2011, 'layer')[3,]$freq
 
+write.csv(stats, file='~/Workspace/TermProject/outputs/validation.csv')
 

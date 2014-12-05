@@ -401,13 +401,13 @@ title('2011 Expert Graph Prediction Subtracted from Observed Land Cover')
 ```
 
 ```{r}
-# png(file='~/Workspace/TermProject/outputs/graphics/plot_2011_observed_minus_learned.png', height=722, width=712)
-plot(dev2011 - output.mmhc.2011, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
+# png(file='~/Workspace/TermProject/outputs/graphics/plot_2006_observed_minus_expert.png', height=722, width=712)
+plot(dev2006 - output.expert.2006, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
      legend=FALSE, xlab='Easting (meters)', ylab='Northing (meters)')
 axis(1); axis(2);
 legend('bottomright', legend=c('Overestimated', 'Agreement', 'Underestimated'),
        fill=cols, bty="n", title='Development Prediction', cex=1.3)
-title('2011 Learned Graph Prediction Subtracted from Observed Land Cover')
+title('2006 Expert Graph Prediction Subtracted from Observed Land Cover')
 # dev.off()
 ```
 

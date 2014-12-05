@@ -1,16 +1,69 @@
 ---
-title: Studying Urban Change in Detroit by Modeling Impervious Surface Changes with
-  Bayesian Networks
+title: Studying Urban Change in Detroit by Modeling Impervious Surface Changes with Bayesian Networks
 author: "K. Arthur Endsley"
 date: "December 9, 2014"
 output: pdf_document
-bibliography: TermPaper.bib
+bibliography: "~/Mendeley.bib"
 csl: TermPaper.csl
+fig_caption: true
 ---
+
+\fontsize{12}{14}
+\selectfont
 
 # Background
 
-There are many motivations for studying urban environments and urban change. Studies have focused on mitigating the impacts of urban sprawl [@Jantz2004], generating urban development scenarios [@Kocabas2007], or monitoring rates of urban growth and impervious surface increase [@Sexton2013].
+There are many motivations for studying urban environments and urban change in terms of land use or land cover changes. Examples of studies in this area include mitigating the impacts of urban sprawl [@Jantz2004], generating urban development scenarios [@Kocabas2007], or monitoring rates of urban growth and impervious surface increase [@Sexton2013]. To these ends, previous studies have employed a variety of models that attempt either to predict future future states of the landscape or to explain the drivers of urban change. Any land cover model can be located on this continuum between \textit{projection} and \textit{explanation} [@Brown2013a] and models generally excel at one purpose but are weak or not even applicable for the other.
+
+## Case Study: Detroit
+
+# Methods
+
+This study employs a land cover model driven by spatially-explicit socioeconomic, demographic, and landscape variables (e.g., distance to roads). Predictions of future land cover are made based on these variables and the previous or currently-observed land cover. Specifically, \textit{development intensity} as indicated by the proportion of impervious surface area is predicted for the Detroit metropolitan area for two years, 2006 and 2011.
+
+The methods are described in detail in the following sections but are here broadly summarized. Land cover data, U.S. Census data, and derived landscape measures were spatially joined, randomly sampled, and then used to train the Bayesian network, a process that includes determining the network structure and then fitting the parameters. In prediction, the predictors (land cover, census, and landscape measures) are first aggregated to 300 meters, ten times the finest resolution of the available data. Estimations of future land cover are therefore also at a scale of 300 meters.
+
+## Data Sources
+
+### Land Cover Data
+
+The land cover data used in this study comes from the National Land Cover Dataset (NLCD) and was obtained from the U.S. Geological Survey. Land cover data in this dataset are available at 30-meter resolution every five years from 2001 to 2011 (thus far). The NLCD classes are consistent between the 2001, 2006, and 2011 land cover maps and the the Multi-Resolution Land Characteristics Consortium (MRLC) asserts that they can be used for longitudinal studies from 2001 to 2011 [@USGS2014]. The classes are several and most are not relevant to this study. Consequently, the NLCD data for 2001, 2006, and 2011 were reclassified to encompass only three classes (Figure 1). These three classes represent undeveloped areas, areas with less than 80% impervious surface cover, and areas that are 80% or more covered by impervious surface.
+
+```{r reclass.explication, message=FALSE, warning=FALSE, echo=FALSE}
+require(pander)
+panderOptions('table.split.table', Inf)
+pander::set.caption('Reclassification table for the National Land Cover Dataset (NLCD)')
+pander(data.frame('Input Class Range'=c('[0-10] (Unused in NLCD)',
+                  '11 ("Open Water")', '[12-20] ("Ice and Snow")',
+                  '[21-23] ("Open Space, Low and Medium-Intensity Development")',
+                  '24 ("High-Intensity Development")',
+                  '[25-99] (Vegetation, Cultivation and Wetlands)'),
+                  'Output Class'=c(0,NA,0,1,2,0),
+                  'New Class Label'=c('Undeveloped', 'Excluded', 'Undeveloped',
+                                      'Low-Intensity Development',
+                                      'High-Intensity Development', 'Undeveloped'),
+                  check.names=FALSE),
+       justify=c('left', 'center', 'left'),
+       style='grid')
+```
+
+### Socioeconomic and Demographic Data
+
+U.S. Census and American Community Survey (ACS) data were used to obtain socioeconomic (e.g., median household income) and demographic (e.g., sex and racial make-up) data on Detroit communities. Ordinarily, obtaining the comprehensive census measures desired in an open-ended study directly from a U.S. government website can be difficult. To expedite data processing, these U.S. Census and ACS data were downloaded from SocialExplorer.org [@Explorer2014], a website that offers a user-friendly interface for downloading census data by census tract or other geographic subset.
+
+### Landscape Measures
+
+## The Model
+
+The modeling approach in this study involves the use of Bayesian networks, which are also known variously as belief networks, Bayesian belief networks, Bayes nets, and causal probabilistic networks [@Uusitalo2007]. Bayesian networks are so-named for the Reverend Thomas Bayes (1702-1760) who is credited with first positing what has become known as Bayes' theory, a statement about conditional probabilities that allows for the calculation of ``inverse probabilities'' or the probability of one of a cause given its consequences.
+
+# Results
+
+## Model Criticism
+
+# Conclusions
+
+## Suggested Improvements
 
 # References
 

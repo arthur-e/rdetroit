@@ -165,6 +165,9 @@ output.mmhc.2011 <- stackApply(layers, rep(1, length(names(layers))), function (
                            nodes='new')$new)
 })
 
+save(output.mmhc.2011, output.expert.2011, file='rda/outputsUnmasked2011.rda')
+load(file='rda/outputsUnmasked2011.rda')
+
 output.mmhc.2011 <- mask(output.mmhc.2011, layers$male.pop, maskvalue=NA)
 output.expert.2011 <- mask(output.expert.2011, layers$male.pop, maskvalue=NA)
 

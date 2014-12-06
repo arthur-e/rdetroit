@@ -2,14 +2,17 @@
 title: Studying Urban Change in Detroit by Modeling Impervious Surface Changes with Bayesian Networks
 author: "K. Arthur Endsley"
 date: "December 9, 2014"
-output: pdf_document
+output:
+  pdf_document:
+    fig_caption: true
 bibliography: "~/Mendeley.bib"
 csl: TermPaper.csl
-fig_caption: true
+smart: true
+fontsize: 12pt
+geometry: margin=1in
+documentclass: report
+classoption: notitlepage
 ---
-
-\fontsize{12}{14}
-\selectfont
 
 # Background
 
@@ -53,7 +56,7 @@ pander(data.frame('Input Class Range'=c('[0-10] (Unused in NLCD)',
 
 U.S. Census and American Community Survey (ACS) data were used to obtain socioeconomic (e.g., median household income) and demographic (e.g., sex and racial make-up) data on Detroit communities. Ordinarily, obtaining the comprehensive census measures desired in an open-ended study directly from a U.S. government website can be difficult. To expedite data processing, these U.S. Census and ACS data were downloaded from SocialExplorer.org [@Explorer2014], a website that offers a user-friendly interface for downloading census data by census tract or other geographic subset.
 
-As census tract boundaries can change between census years (and did change between 2001 and 2010), a necessary first step to using the census data in this study included cross-walking 2001 census data to the 2010 census tract boundaries. This was facilitated by the use of crosswalk tables developed by Logan et al. [-@Logan2014]. Census data were also normalized so as to eliminate the effects of census tract land area, total population, total number of housing units, and total household population. Some census variables, such as population density and median household income, were intrinsically scale-independent and did not need to be normalized.
+As census tract boundaries can change between census years (and did change between 2001 and 2010), a necessary first step to using the census data in this study included cross-walking 2001 census data to the 2010 census tract boundaries. This was facilitated by the use of crosswalk tables developed by Logan et al. [-@Logan2014]. Census data were also normalized so as to eliminate the effects of census tract land area, total population, total number of housing units, and total household population. Some census variables, such as population density and median household income, were intrinsically scale-independent and did not need to be normalized. The census variables were chosen so that only variables jointly present across the 2001 U.S. Census, 2006-2010 ACS, and 2008-2012 ACS were considered. It is worth remarking that while this ensures every training and prediction dataset has the same variables, the model used in this paper does not require simultaneous observations of every variable (that is, it tolerates missing data).
 
 ### Landscape Measures
 
@@ -85,7 +88,38 @@ In addition to the learned network, an "expert" network was specified based on t
 
 ### Fitting the Parameters
 
-Parameter learning is generally done through a maximum likelihood approach (whereby the best fit parameters are estimated) or a Bayesian approach (whereby the posterior distribution of the parameters for a discrete distribution is estimated). The Bayesian approach is preferred as it provides more robust estimates and guarantees the conditional probability tables will be complete [@Nagarajan2013].
+Parameter learning is generally done through a maximum likelihood approach (whereby the best fit parameters are estimated) or a Bayesian approach (whereby the posterior distribution of the parameters for a discrete distribution is estimated). The Bayesian approach is preferred as it provides more robust estimates and guarantees the conditional probability tables will be complete [@Nagarajan2013]. This is the approach used in this paper.
+
+The BNs were trained from the high-resolution, 30-meter land cover data and landscape measures joined to the coarse-resolution census data. The random samples used to learn the network structure, score the network structure, and fit the model were distinct; a three-folds random sample was created for these purposes. Each disjoint sample contains less than 4% of the complete dataset. The "expert" and the "learned" networks were fitted with the same sample.
+
+## Prediction
+
+The predictor variables were aggregated to 300 meters to reduce the computational complexity. Prediction with the either the expert or learned Bayesian network consists of the same, basic steps:
+
+\begin{enumerate}
+\item{For each pixel, get the available evidence (census measures, proximities, and land cover observations).}
+\item{Obtain the posterior probability distributions given the evidence.}
+\item{Considering the ``new'' land cover variable, choose the outcome (land cover) from the posterior probability distribution.}
+\end{enumerate}
+
+One of the virtues of BNs is that predictions do not require a simultaneous observation of all predictor variables; even just one predictor variable can be used as evidence. This would be useful, for instance, in the prediction of 2011 land cover prediction from the 2010 U.S. Census as this census did not include the "median household income" or "population poor or struggling" variables, which had been used to develop and train the network. The predictions made before evidence and after seeing the evidence can be appreciated graphically in Figure 2, which shows an arbitrary prediction made one of the BNs before the "no data" areas were masked.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, fit.height=4, fig.cap='A Bayesian network prediction without masking'}
+require(raster)
+require(rgdal)
+load(file='rda/outputsUnmasked2011.rda')
+
+require(RColorBrewer)
+cols <- brewer.pal(3, 'YlGnBu')
+
+par(xpd=FALSE)
+plot(output.expert.2011, col=cols, axes=FALSE, box=FALSE, legend=FALSE,
+     xlab='Easting (meters)', ylab='Northing (meters)')
+axis(1); axis(2);
+par(xpd=TRUE)
+legend('right', bty="n", title='', fill=cols, inset=c(-0.4, 0),
+       legend=c('Undeveloped', 'Low-Intensity', 'High-Intensity'))
+```
 
 # Results
 

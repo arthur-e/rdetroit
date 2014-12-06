@@ -44,17 +44,20 @@
     </names>
   </macro>
   <macro name="access">
+    <text variable="url"/>
     <choose>
-      <if variable="URL">
-        <text variable="URL"/>
-        <group prefix=" (" suffix=")">
-          <text term="accessed" prefix="last " suffix=" "/>
-          <date variable="accessed">
-            <date-part name="day" suffix=" "/>
-            <date-part name="month" suffix=" "/>
-            <date-part name="year"/>
-          </date>
-        </group>
+      <if variable="url">
+        <if variable="accessed">
+          <text variable="url"/>
+          <group prefix=" (" suffix=")">
+            <text term="accessed" prefix="last " suffix=" "/>
+            <date variable="accessed">
+              <date-part name="day" suffix=" "/>
+              <date-part name="month" suffix=" "/>
+              <date-part name="year"/>
+            </date>
+          </group>
+        </if>
       </if>
     </choose>
   </macro>

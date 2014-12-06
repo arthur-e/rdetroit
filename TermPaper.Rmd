@@ -21,7 +21,9 @@ There are many motivations for studying urban environments and urban change in t
 
 This study employs a land cover model driven by spatially-explicit socioeconomic, demographic, and landscape variables (e.g., distance to roads). Predictions of future land cover are made based on these variables and the previous or currently-observed land cover. Specifically, \textit{development intensity} as indicated by the proportion of impervious surface area is predicted for the Detroit metropolitan area for two years, 2006 and 2011.
 
-The methods are described in detail in the following sections but are here broadly summarized. Land cover data, U.S. Census data, and derived landscape measures were spatially joined, randomly sampled, and then used to train the Bayesian network, a process that includes determining the network structure and then fitting the parameters. In prediction, the predictors (land cover, census, and landscape measures) are first aggregated to 300 meters, ten times the finest resolution of the available data. Estimations of future land cover are therefore also at a scale of 300 meters.
+The methods are described in detail in the following sections but are here broadly summarized. Land cover data, U.S. Census data, and derived landscape measures were spatially joined, randomly sampled, and then used to train the Bayesian network, a process that includes determining the network structure and then fitting the parameters. In prediction, the predictors (land cover, census, and landscape measures) are first aggregated to 300 meters, ten times the finest resolution of the available data. Estimations of future land cover are therefore also at a scale of 300 meters. All of the spatially explicit predictor datasets, available as geographic information systems (GIS) layers, were projected to a common coordinate reference system and clipped to the study area.
+
+The analysis was primarily carried out within the R statistical computing environment [@R2014] using a number of different packages made freely available to the scientific community including \texttt{sp}, \texttt{raster}, \texttt{rgdal}, \texttt{plyr}, and \texttt{reshape2}. Visualizations were aided by the perceptually linear and colorblind-friendly palettes available in the \texttt{RColorBrewer} package and based on Cynthia Brewer's innovative work in color theory [@Brewer2014]. The structure learning, parameter fitting, and operation of Bayesian networks were facilitated by the \texttt{bnlearn} package [@Scutari2014]. Cohen's kappa, a measure of inter-rater reliability and agreement, was calculated using the \texttt{irr} package.
 
 ## Data Sources
 
@@ -51,7 +53,15 @@ pander(data.frame('Input Class Range'=c('[0-10] (Unused in NLCD)',
 
 U.S. Census and American Community Survey (ACS) data were used to obtain socioeconomic (e.g., median household income) and demographic (e.g., sex and racial make-up) data on Detroit communities. Ordinarily, obtaining the comprehensive census measures desired in an open-ended study directly from a U.S. government website can be difficult. To expedite data processing, these U.S. Census and ACS data were downloaded from SocialExplorer.org [@Explorer2014], a website that offers a user-friendly interface for downloading census data by census tract or other geographic subset.
 
+As census tract boundaries can change between census years (and did change between 2001 and 2010), a necessary first step to using the census data in this study included cross-walking 2001 census data to the 2010 census tract boundaries. This was facilitated by the use of crosswalk tables developed by Logan et al. [-@Logan2014]. Census data were also normalized so as to eliminate the effects of census tract land area, total population, total number of housing units, and total household population. Some census variables, such as population density and median household income, were intrinsically scale-independent and did not need to be normalized.
+
 ### Landscape Measures
+
+Two additional predictors were initially considered: distance to major roads and distance to parks and open recreation areas. These were derived from maps of roads, obtained from the Michigan Geographic Data Library [@Michigan2014], and of parks and open recreation areas, obtained from the Southeastern Michigan Council of Governments, and were both rasterized to 30 meters, matching the resolution of the land cover data. Proximities to roads and parks were then calculated from these layers using the Geospatial Data Abstraction Library [@Team2014].
+
+## Finding Independent Predictors
+
+After the reclassified land cover data, census measures, and landscape data were spatially joined in R, Pearson's correlation coefficients were calculated for every pair of independent predictors. A threshold of $R^2=0.5$ was chosen as the cut-off for collinearity; a correlation above this threshold was interpreted to mean that one of the two variables had to be left out of the model. Although multicollinearity is not a serious concern for purely predictive models, as the objective of this model is explanatory, minimizing multicollinearity is essential so as to avoid artificially inflating parameter values.
 
 ## The Model
 

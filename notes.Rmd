@@ -12,6 +12,8 @@ output: html_document
 - [x] Re-learn the network from discretized data???
 - [x] Check CPTs for explanatory relationships that make sense.
 - [ ] Get references for land cover change 2006-2011 in Oakland, Wayne, Macomb counties
+- [ ] Estimate "old" land cover from 2006 predictors
+- [ ] Estimate "new" land cover in 2001 from 2001 predictors (without any evidence for the "old" land cover)
 
 ## Training
 

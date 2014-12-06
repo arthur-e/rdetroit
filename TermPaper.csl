@@ -44,7 +44,7 @@
     </names>
   </macro>
   <macro name="access">
-    <text variable="url"/>
+    <text variable="url"/> 
     <choose>
       <if variable="url">
         <if variable="accessed">

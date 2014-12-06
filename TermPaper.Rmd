@@ -14,6 +14,18 @@ documentclass: report
 classoption: notitlepage
 ---
 
+```{r preamble, echo=FALSE, message=FALSE, warning=FALSE, results=FALSE}
+setwd('/usr/local/dev/rdetroit/')
+library(sp, raster)
+library(rgdal)
+
+file.loc <- '/home/arthur/Workspace/TermProject/'
+
+require(rgdal)
+counties <- readOGR(paste0(file.loc, 'ancillary/co26_d00_select_nad83.shp'),
+                    'co26_d00_select_nad83', verbose=FALSE)
+```
+
 # Background
 
 There are many motivations for studying urban environments and urban change in terms of land use or land cover changes. Examples of studies in this area include mitigating the impacts of urban sprawl [@Jantz2004], generating urban development scenarios [@Kocabas2007], or monitoring rates of urban growth and impervious surface increase [@Sexton2013]. To these ends, previous studies have employed a variety of models that attempt either to predict future future states of the landscape or to explain the drivers of urban change. Any land cover model can be located on this continuum between \textit{projection} and \textit{explanation} [@Brown2013a] and models generally excel at one purpose but are weak or not even applicable for the other.
@@ -64,11 +76,11 @@ Two additional predictors were initially considered: distance to major roads and
 
 ## Finding Independent Predictors
 
-After the reclassified land cover data, census measures, and landscape data were spatially joined in R, Pearson's correlation coefficients were calculated for every pair of independent predictors. A threshold of $R^2=0.5$ was chosen as the cut-off for collinearity; a correlation above this threshold was interpreted to mean that one of the two variables had to be left out of the model. Although multicollinearity is not a serious concern for purely predictive models, as the objective of this model is explanatory, minimizing multicollinearity is essential so as to avoid artificially inflating parameter values.
+After the reclassified land cover data, census measures, and landscape data were spatially joined in R, Pearson's correlation coefficients were calculated for every pair of independent predictors. A threshold of $R^2=\pm 0.5$ was chosen as the cut-off for collinearity; a correlation above this threshold was interpreted to mean that one of the two variables had to be left out of the model. Although multicollinearity is not a serious concern for purely predictive models, as the objective of this model is explanatory, minimizing multicollinearity is essential so as to avoid artificially inflating parameter values.
 
 A number of highly correlated "clusters" were located from these pair-wise tests. Population density, number of married households, and number of family households were one such cluster. Median household income, proportion of housing occupied, proportion of housing occupied by the owner, and proportion of the population poor or struggling were found to be correlated with one another. Male and female populations were obviously highly correlated with one another. Other census measures, including any measure of racial make-up, were all highly correlated with one another. From these clusters, independent measures were somewhat arbitrarily chosen. For instance, male population was selected where the variable female population would have presumably been equivalent in the model. Population density and median household income, however, were chosen specifically because it is assumed that such data are more likely to be available on fine time scales from sources other than the U.S. Census.
 
-Distance to roads and population density were found to be marginally correlated ($R^2\approx 0.5$) with previous ("old") land cover and therefore were dropped from the final model (as dropping "old" land cover is not an option). The final variables included in the model were therefore: Median household income, proportion of the population poor or struggling, proportion of the population that is male, old and new land cover, and proximity to parks and open areas. All the predictor variables were discretized into two quantiles (a median split of the data) with the exception of previous land cover, which, as with future land cover, was already discretized into three classes.
+Distance to roads and population density were found to be marginally correlated ($R^2\approx \pm 0.5$) with previous ("old") land cover and therefore were dropped from the final model (as dropping "old" land cover is not an option). The final variables included in the model were therefore: Median household income, proportion of the population poor or struggling, proportion of the population that is male, old and new land cover, and proximity to parks and open areas. All the predictor variables were discretized into two quantiles (a median split of the data) with the exception of previous land cover, which, as with future land cover, was already discretized into three classes.
 
 ## The Model
 
@@ -90,7 +102,7 @@ In addition to the learned network, an "expert" network was specified based on t
 
 Parameter learning is generally done through a maximum likelihood approach (whereby the best fit parameters are estimated) or a Bayesian approach (whereby the posterior distribution of the parameters for a discrete distribution is estimated). The Bayesian approach is preferred as it provides more robust estimates and guarantees the conditional probability tables will be complete [@Nagarajan2013]. This is the approach used in this paper.
 
-The BNs were trained from the high-resolution, 30-meter land cover data and landscape measures joined to the coarse-resolution census data. The random samples used to learn the network structure, score the network structure, and fit the model were distinct; a three-folds random sample was created for these purposes. Each disjoint sample contains less than 4% of the complete dataset. The "expert" and the "learned" networks were fitted with the same sample.
+The BNs were trained from the high-resolution, 30-meter land cover data and landscape measures joined to the coarse-resolution census data. The 2001 observed land cover from NLCD was used as the "old" land cover while 2006 was used as the "new" land cover. A three-folds random sample of the combined predictors was created so that the samples used to learn the network structure, score the network structure, and fit the model were disjoint. Each disjoint sample contains less than 4% of the complete dataset. The "expert" and the "learned" networks were fitted with the same sample.
 
 ## Prediction
 
@@ -102,9 +114,7 @@ The predictor variables were aggregated to 300 meters to reduce the computationa
 \item{Considering the ``new'' land cover variable, choose the outcome (land cover) from the posterior probability distribution.}
 \end{enumerate}
 
-One of the virtues of BNs is that predictions do not require a simultaneous observation of all predictor variables; even just one predictor variable can be used as evidence. This would be useful, for instance, in the prediction of 2011 land cover prediction from the 2010 U.S. Census as this census did not include the "median household income" or "population poor or struggling" variables, which had been used to develop and train the network. The predictions made before evidence and after seeing the evidence can be appreciated graphically in Figure 2, which shows an arbitrary prediction made one of the BNs before the "no data" areas were masked.
-
-```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, fit.height=4, fig.cap='A Bayesian network prediction without masking'}
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, fit.height=3, fig.cap='A Bayesian network prediction without masking'}
 require(raster)
 require(rgdal)
 load(file='rda/outputsUnmasked2011.rda')
@@ -117,11 +127,73 @@ plot(output.expert.2011, col=cols, axes=FALSE, box=FALSE, legend=FALSE,
      xlab='Easting (meters)', ylab='Northing (meters)')
 axis(1); axis(2);
 par(xpd=TRUE)
-legend('right', bty="n", title='', fill=cols, inset=c(-0.4, 0),
-       legend=c('Undeveloped', 'Low-Intensity', 'High-Intensity'))
+legend('right', bty="n", title='', fill=rev(cols), inset=c(-0.4, 0),
+       legend=c('High-Intensity', 'Low-Intensity', 'Undeveloped'))
 ```
 
+One of the virtues of BNs is that predictions do not require a simultaneous observation of all predictor variables; even just one predictor variable can be used as evidence. This would be useful, for instance, in the prediction of 2011 land cover prediction from the 2010 U.S. Census as this census did not include the "median household income" or "population poor or struggling" variables, which had been used to develop and train the network. The predictions made before evidence and after seeing the evidence can be appreciated graphically in Figure 1, which shows an arbitrary prediction made one of the BNs before the "no data" areas were masked. In this figure, one can see that in the "no data" areas to the lower right there is what looks like noise. This is an area where, without any evidence to show to our model, predictions of future land cover are pulled from the prior distribution. When predictions are made in areas where evidence exists, however, the posterior distribution is obtained and structure emerges.
+
+Land cover predictions were made from both the expert and learned networks for two years, 2006 and 2011, using the 2006-2010 and 2008-2012 ACS data, respectively. In predicting 2006 land cover, the 2001 observed land cover was used as the "old" land cover; for 2011 predictions, the 2006 observed land cover was used. The roads and parks layers remained the same for any year as it is not known what date(s) they represent. They are assumed to be accurate throughout the time period studied, i.e., it is assumed that roads and parks did not change between 2001 and 2011.
+
 # Results
+
+Results are shown only from the expert network as the predictions made by this network and those of the learned network do not appreciably differ. The extent to which they differ can be studied in Table 2. Figure 2 shows the 2006 prediction by the expert network alongside the 2006 observed land cover map. Major features of the Detroit metropolitan area are immediately recognizable as high-intensity development in the prediction, even at this relatively coarse scale: Woodward Avenue, the Grosbeak Highway, the Jeffries Freeway.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results=FALSE, fig.cap='Observed land cover according to the NLCD in 2006 (left) and the 2006 prediction by the expert Bayesian network (right)', fig.width=7.5}
+require(raster)
+load(file='rda/caAggregates.rda')
+load(file='rda/layerStack2006.rda')
+load(file='rda/outputs2006.rda')
+
+cols <- c('#FFFFFF', '#AACCEE', '#113355')
+dev2006 <- mask(dev2006, layers$male.pop, maskvalue=NA)
+counties <- spTransform(counties, crs(dev2006))
+
+par(mfcol=c(1,2))
+par(xpd=FALSE)
+plot(dev2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE,
+     xlab='Easting (meters)', ylab='Northing (meters)')
+plot(counties, border='#333333', add=TRUE)
+axis(1); axis(2)
+par(xpd=TRUE)
+legend('bottomright', legend=c('High-Intensity', 'Low-Intensity', 'Undeveloped'),
+       fill=rev(cols), bty="n", title='Land Cover',
+       inset=c(-0.25, 0), cex=0.9)
+plot(output.expert.2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE,
+     xlab='Easting (meters)')
+plot(counties, border='#333333', add=TRUE)
+axis(1); axis(2)
+par(mfcol=c(1,1))
+```
+
+The prediction appears to be quite robust; so much so it is hard to tell the difference between the two images. This might be expected for an "in-fit" prediction as the 2006 observed land cover was used train the Bayesian networks. To better assess how either model performs we can look at the difference between observed and predicted land cover (Figure 3). In both years, the Detroit city core is estimated quite accurately. In the 2006 prediction, the model underestimates suburban development. Both years show considerable dispersion of development in the exurban areas at the northern and western edges of the three counties. In particular, the 2011 prediction overestimates development in large patches within the suburban areas of all three counties.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results=FALSE, fig.cap="Two expert model predictions subtracted from the respective year's observed land cover: 2006 (left) and 2011 (right)", fig.width=7.5}
+load(file='rda/layerStack2011.rda')
+load(file='rda/outputs2011.rda')
+dev2011 <- mask(dev2011, layers$male.pop, maskvalue=NA)
+
+require(RColorBrewer)
+cols <- brewer.pal(5, 'RdYlBu')
+cols <- c(cols[1], '#FFFFFF', cols[5])
+
+par(mfcol=c(1,2))
+par(xpd=FALSE)
+plot(dev2006 - output.expert.2006, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
+     legend=FALSE, xlab='Easting (meters)', ylab='Northing (meters)')
+plot(counties, border='#333333', add=TRUE)
+axis(1); axis(2);
+par(xpd=TRUE)
+legend('bottomright', legend=c('Overestimated', 'Agreement', 'Underestimated'),
+       fill=cols, bty="n", title='Legend',
+       inset=c(-0.25, 0))
+par(xpd=FALSE)
+plot(dev2011 - output.expert.2011, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
+     legend=FALSE, xlab='Easting (meters)')
+plot(counties, border='#333333', add=TRUE)
+axis(1); axis(2);
+par(mfcol=c(1,1))
+```
 
 ## Model Criticism
 

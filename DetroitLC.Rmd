@@ -120,6 +120,21 @@ install.packages('gRain')
 
 ## Preparing a Common Coordinate Reference System
 
+We want to extract the tri-county area as a cutline for displaying data.
+
+```
+# Get the State of Michigan
+wget http://www.naturalearthdata.com/http//www.naturalearthdata.com/download/50m/cultural/ne_50m_admin_1_states_provinces_lakes.zip
+unzip ne_50m_admin_1_states_provinces_lakes.zip
+ogr2ogr -f "ESRI Shapefile" -where "name='Michigan'" -t_srs "EPSG:26917" ne_50m_admin1_states_MI_nad83.shp ne_50m_admin_1_states_provinces_lakes.shp
+
+# Get Michigan counties
+wget http://www.mcgi.state.mi.us/mgdl/framework/statewide/county_mi.zip
+unzip county_mi.zip
+ogr2ogr -f "ESRI Shapefile" -where "NAME='Wayne' OR NAME='Oakland' OR NAME='Macomb'" county_miv14a_select.shp county_miv14a.shp
+ogr2ogr -f "ESRI Shapefile" -t_srs "EPSG:26917" county_miv14a_select_nad83.shp county_miv14a_select.shp
+```
+
 We'll use the census tracts as cutline features.
 
 ```

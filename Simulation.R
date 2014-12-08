@@ -246,10 +246,10 @@ pts <- as.data.frame(output.expert.2006, xy=TRUE)
 pts$layer <- NULL
 # points(pts, col='red')
 
-stats <- data.frame(matrix(nrow=6, ncol=5),
+stats <- data.frame(matrix(nrow=6, ncol=4),
                     row.names=c('2006.observed', '2006.expert', '2006.learned',
                                 '2011.observed', '2011.expert', '2011.learned'))
-names(stats) <- c('Cohens.Kappa', 'Undev.freq', 'Low.dev.freq', 'High.dev.freq', 'Compactness')
+names(stats) <- c('Cohens.Kappa', 'Undev.freq', 'Low.dev.freq', 'High.dev.freq')
 
 require(raster)
 samples.observed.2006 <- extract(dev2006, pts, df=TRUE, factors=TRUE)

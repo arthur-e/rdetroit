@@ -34,7 +34,29 @@ Some ostensibly explanatory models are not easily interpretable despite the mode
 
 ## Case Study: Detroit
 
-Detroit is a particularly interesting case study for urban change because of its considerable economic and population decline [@Hoalst-Pullen2011]. From a modeling perspective, boom-and-bust dynamics are more challenging than constant growth and some landscape models are ill-equipped for such purposes [@Jantz2004].
+Detroit is a particularly interesting case study for urban change because of its considerable economic and population decline [@Hoalst-Pullen2011]. From a modeling perspective, boom-and-bust dynamics are more challenging than constant growth and some landscape models are ill-equipped for such purposes [@Jantz2004]. In this study, I attempt to answer some basic questions about the Detroit metropolitan area, here considered to be the area within Oakland, Macomb, and Wayne counties, as a case study.
+
+1. What are the major drivers of land cover change in Detroit from 2000 to 2011?
+1. Can a landscape model account for Detroit's urban decay as well as urban growth?
+1. Which parts of Detroit's development are difficult to predict---the urban core, suburban areas?
+
+```{r eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results=FALSE, fig.cap='The three counties of Oakland, Macomb, and Wayne (listed clockwise from top left) considered in this study (left) and the 2010 U.S. Census tracts within them (right)', fig.width=5.5}
+require(sp)
+require(rgdal)
+
+state <- readOGR('/home/arthur/Workspace/GIS/Boundaries/USA/MI/ne_50m_admin1_states_MI_nad83.shp',
+                 'ne_50m_admin1_states_MI_nad83', verbose=F)
+counties <- readOGR('/home/arthur/Workspace/TermProject/ancillary/county_miv14a_select_nad83.shp',
+                 'county_miv14a_select_nad83', verbose=F)
+tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10_nad83.shp', 't10_nad83', verbose=F)
+
+par(mfcol=c(1,2))
+plot(state)
+plot(counties, add=TRUE, border='red', lwd=2)
+plot(counties, border='red', lwd=3)
+plot(tracts, add=TRUE, lty=1)
+par(mfcol=c(1,1))
+```
 
 # Methods
 
@@ -112,11 +134,9 @@ The BNs were trained from the high-resolution, 30-meter land cover data and land
 
 The predictor variables were aggregated to 300 meters to reduce the computational complexity. Prediction with the either the expert or learned Bayesian network consists of the same, basic steps:
 
-\begin{enumerate}
-\item{For each pixel, get the available evidence (census measures, proximities, and land cover observations).}
-\item{Obtain the posterior probability distributions given the evidence.}
-\item{Considering the ``new'' land cover variable, choose the outcome (land cover) from the posterior probability distribution.}
-\end{enumerate}
+1. For each pixel, get the available evidence (census measures, proximities, and land cover observations).
+1. Obtain the posterior probability distributions given the evidence.
+1. Considering the ``new'' land cover variable, choose the outcome (land cover) from the posterior probability distribution.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, fit.height=3, fig.cap='A Bayesian network prediction without masking'}
 require(raster)
@@ -170,6 +190,8 @@ axis(1); axis(2)
 par(mfcol=c(1,1))
 ```
 
+## Model Criticism
+
 The prediction appears to be quite robust; so much so it is hard to tell the difference between the two images. This might be expected for an "in-fit" prediction as the 2006 observed land cover was used train the Bayesian networks. To better assess how either model performs we can look at the difference between observed and predicted land cover (Figure 3). In both years, the Detroit city core is estimated quite accurately. In the 2006 prediction, the model underestimates suburban development. Both years show considerable dispersion of development in the exurban areas at the northern and western edges of the three counties. In particular, the 2011 prediction overestimates development in large patches within the suburban areas of all three counties.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results=FALSE, fig.cap="Two expert model predictions subtracted from the respective year's observed land cover: 2006 (left) and 2011 (right)", fig.width=7.5}
@@ -199,13 +221,26 @@ axis(1); axis(2);
 par(mfcol=c(1,1))
 ```
 
-## Model Criticism
+Fit statistics are shown in Table 2. 
 
-(Equifinality) [@Brown2013a]
+```{r}
+stats <- read.csv('~/Workspace/TermProject/outputs/validation.csv')
+names(stats) <- c('', "Cohen's kappa", 'No. Undev.', 'No. Low-Intensity',
+                  'No. High-Intensity')
+stats[,1] <- sapply(stats[,1], function (s) gsub('\\.', ' ', s))
+require(pander)
+panderOptions('table.split.table', Inf)
+pander::set.caption('Reclassification table for the National Land Cover Dataset (NLCD)')
+pander(stats, justify=c('left', 'right', 'right', 'right', 'right'), style='grid')
+```
 
 # Conclusions
 
+(Equifinality) [@Brown2013a]
+
 ## Suggested Improvements
+
+\newpage
 
 # References
 

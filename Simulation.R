@@ -292,5 +292,27 @@ stats['2011.expert', 'Undev.freq'] <- count(samples.expert.2011, 'layer')[1,]$fr
 stats['2011.expert', 'Low.dev.freq'] <- count(samples.expert.2011, 'layer')[2,]$freq
 stats['2011.expert', 'High.dev.freq'] <- count(samples.expert.2011, 'layer')[3,]$freq
 
+###################
+# Zonal statistics
+
+tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10_nad83.shp', 't10_nad83')
+tracts$FIPS <- tracts$GEOID10
+tracts <- subset(tracts, select=c('FIPS'))
+obs.2006.num.undev <- extract(dev2006, tracts, method='simple', df=TRUE, sp=TRUE,
+                              fun=function (v) length(v[v==0]))
+obs.2006.num.lowdev <- extract(dev2006, tracts, method='simple', df=TRUE, sp=TRUE,
+                               fun=function (v) length(v[v==1]))
+obs.2006.num.highdev <- extract(dev2006, tracts, method='simple', df=TRUE, sp=TRUE,
+                                fun=function (v) length(v[v==2]))
+
+obs.2011.num.undev <- extract(dev2011, tracts, method='simple', df=TRUE, sp=TRUE,
+                              fun=function (v) length(v[v==0]))
+obs.2011.num.lowdev <- extract(dev2011, tracts, method='simple', df=TRUE, sp=TRUE,
+                               fun=function (v) length(v[v==1]))
+obs.2011.num.highdev <- extract(dev2011, tracts, method='simple', df=TRUE, sp=TRUE,
+                                fun=function (v) length(v[v==2]))
+
+save(obs.2006.num.undev, obs.2006.num.lowdev, obs.2006.num.highdev, obs.2011.num.undev, obs.2011.num.lowdev, obs.2011.num.highdev, file='rda/zonalStatistics.rda')
+
 write.csv(stats, file='~/Workspace/TermProject/outputs/validation.csv')
 

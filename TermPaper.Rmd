@@ -30,7 +30,11 @@ counties <- readOGR(paste0(file.loc, 'ancillary/co26_d00_select_nad83.shp'),
 
 There are many motivations for studying urban environments and urban change in terms of land use or land cover changes. Examples of studies in this area include mitigating the impacts of urban sprawl [@Jantz2004], generating urban development scenarios [@Kocabas2007], or monitoring rates of urban growth and impervious surface increase [@Sexton2013]. To these ends, previous studies have employed a variety of models that attempt either to predict future future states of the landscape or to explain the drivers of urban change. Any land cover model can be located on this continuum between \textit{projection} and \textit{explanation} [@Brown2013a] and models generally excel at one purpose but are weak or not even applicable for the other.
 
+Some ostensibly explanatory models are not easily interpretable despite the modeler's intentions. With some cellular automata models, a failure to reproduce fine-scale patterns and accurately locate urban growth may indicate a problem with the model's structure (transition rules, namely) but identifying which parts of the structure that are at fault can be challenging as it requires many different measures of model outcomes both quantitative and qualitative [@Brown2013a]. Bayesian networks (BNs) are a relatively recent [@Pearl1985] tool for estimating probabilities of occurrence given sparse observations and have been demonstrated to be useful for land cover modeling [@Kocabas2007]. Are BNs an \textit{interpretable} (explanatory) and yet spatially accurate modeling approach for investigating changes in urban land cover?
+
 ## Case Study: Detroit
+
+Detroit is a particularly interesting case study for urban change because of its considerable economic and population decline [@Hoalst-Pullen2011]. From a modeling perspective, boom-and-bust dynamics are more challenging than constant growth and some landscape models are ill-equipped for such purposes [@Jantz2004].
 
 # Methods
 
@@ -44,7 +48,7 @@ The analysis was primarily carried out within the R statistical computing enviro
 
 ### Land Cover Data
 
-The land cover data used in this study comes from the National Land Cover Dataset (NLCD) and was obtained from the U.S. Geological Survey. Land cover data in this dataset are available at 30-meter resolution every five years from 2001 to 2011 (thus far). The NLCD classes are consistent between the 2001, 2006, and 2011 land cover maps and the the Multi-Resolution Land Characteristics Consortium (MRLC) asserts that they can be used for longitudinal studies from 2001 to 2011 [@USGS2014]. The classes are several and most are not relevant to this study. Consequently, the NLCD data for 2001, 2006, and 2011 were reclassified to encompass only three classes (Figure 1). These three classes represent undeveloped areas, areas with less than 80% impervious surface cover, and areas that are 80% or more covered by impervious surface.
+The land cover data used in this study comes from the National Land Cover Dataset (NLCD) and was obtained from the U.S. Geological Survey. Land cover data in this dataset are available at 30-meter resolution every five years from 2001 to 2011 (thus far). The NLCD classes are consistent between the 2001, 2006, and 2011 land cover maps and the the Multi-Resolution Land Characteristics Consortium (MRLC) asserts that they can be used for longitudinal studies from 2001 to 2011 [@USGS2014]. The classes are several and most are not relevant to this study. Consequently, the NLCD data for 2001, 2006, and 2011 were reclassified to encompass only three classes (Table 1). These three classes represent undeveloped areas, areas with less than 80% impervious surface cover, and areas that are 80% or more covered by impervious surface.
 
 ```{r reclass.explication, message=FALSE, warning=FALSE, echo=FALSE}
 require(pander)
@@ -197,6 +201,8 @@ par(mfcol=c(1,1))
 
 ## Model Criticism
 
+(Equifinality) [@Brown2013a]
+
 # Conclusions
 
 ## Suggested Improvements
@@ -204,3 +210,5 @@ par(mfcol=c(1,1))
 # References
 
 \raggedright
+\fontsize{10}{12}
+\selectfont

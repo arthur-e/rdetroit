@@ -28,11 +28,11 @@ counties <- readOGR(paste0(file.loc, 'ancillary/co26_d00_select_nad83.shp'),
 
 # Background
 
-There are many motivations for studying urban environments and urban change in terms of land use or land cover changes. Examples of studies in this area include mitigating the impacts of urban sprawl [@Jantz2004], generating urban development scenarios [@Kocabas2007], or monitoring rates of urban growth and impervious surface increase [@Sexton2013]. To these ends, previous studies have employed a variety of models that attempt either to predict future future states of the landscape or to explain the drivers of urban change. Any land cover model can be located on this continuum between \textit{projection} and \textit{explanation} [@Brown2013a] and models generally excel at one purpose but are weak or not even applicable for the other.
+There are many motivations for studying urban environments and urban change in terms of land use or land cover changes. Studies include mitigating the impacts of urban sprawl [@Jantz2004], generating urban development scenarios [@Kocabas2007], or monitoring rates of urban growth and impervious surface increase [@Sexton2013]. To these ends, previous studies have employed a variety of models that attempt either to predict future future states of the landscape or to explain the drivers of urban change. Any land cover model can be located on this continuum between \textit{projection} and \textit{explanation} [@Brown2013a] and models generally excel at one purpose but are weak or not even applicable for the other.
 
 Some ostensibly explanatory models are not easily interpretable despite the modeler's intentions. With some cellular automata models, a failure to reproduce fine-scale patterns and accurately locate urban growth may indicate a problem with the model's structure (transition rules, namely) but identifying which parts of the structure that are at fault can be challenging as it requires many different measures of model outcomes both quantitative and qualitative [@Brown2013a]. Bayesian networks (BNs) are a relatively recent [@Pearl1985] tool for estimating probabilities of occurrence given sparse observations and have been demonstrated to be useful for land cover modeling [@Kocabas2007]. Are BNs an \textit{interpretable} (explanatory) and yet spatially accurate modeling approach for investigating changes in urban land cover?
 
-## Case Study: Detroit
+## Case Study: Detroit, Michigan
 
 Detroit is a particularly interesting case study for urban change because of its considerable economic and population decline [@Hoalst-Pullen2011]. From a modeling perspective, boom-and-bust dynamics are more challenging than constant growth and some landscape models are ill-equipped for such purposes [@Jantz2004]. In this study, I attempt to answer some basic questions about the Detroit metropolitan area, here considered to be the area within Oakland, Macomb, and Wayne counties, as a case study.
 
@@ -64,13 +64,13 @@ This study employs a land cover model driven by spatially-explicit socioeconomic
 
 The methods are described in detail in the following sections but are here broadly summarized. Land cover data, U.S. Census data, and derived landscape measures were spatially joined, randomly sampled, and then used to train the Bayesian network, a process that includes determining the network structure and then fitting the parameters. In prediction, the predictors (land cover, census, and landscape measures) are first aggregated to 300 meters, ten times the finest resolution of the available data. Estimations of future land cover are therefore also at a scale of 300 meters. All of the spatially explicit predictor datasets, available as geographic information systems (GIS) layers, were projected to a common coordinate reference system and clipped to the study area.
 
-The analysis was primarily carried out within the R statistical computing environment [@R2014] using a number of different packages made freely available to the scientific community including \texttt{sp}, \texttt{raster}, \texttt{rgdal}, \texttt{plyr}, and \texttt{reshape2}. Visualizations were aided by the perceptually linear and colorblind-friendly palettes available in the \texttt{RColorBrewer} package and based on Cynthia Brewer's innovative work in color theory [@Brewer2014]. The structure learning, parameter fitting, and operation of Bayesian networks were facilitated by the \texttt{bnlearn} package [@Scutari2014]. Cohen's kappa, a measure of inter-rater reliability and agreement, was calculated using the \texttt{irr} package.
+The analysis was primarily carried out within the R statistical computing environment [@R2014] using a number of different packages including \texttt{sp}, \texttt{raster}, \texttt{rgdal}, \texttt{plyr}, and \texttt{reshape2}. Visualizations were aided by the perceptually linear and colorblind-friendly palettes available in the \texttt{RColorBrewer} package and based on Cynthia Brewer's innovative work in color theory [@Brewer2014]. The structure learning, parameter fitting, and operation of Bayesian networks were facilitated by the \texttt{bnlearn} package [@Scutari2014].
 
 ## Data Sources
 
 ### Land Cover Data
 
-The land cover data used in this study comes from the National Land Cover Dataset (NLCD) and was obtained from the U.S. Geological Survey. Land cover data in this dataset are available at 30-meter resolution every five years from 2001 to 2011 (thus far). The NLCD classes are consistent between the 2001, 2006, and 2011 land cover maps and the the Multi-Resolution Land Characteristics Consortium (MRLC) asserts that they can be used for longitudinal studies from 2001 to 2011 [@USGS2014]. The classes are several and most are not relevant to this study. Consequently, the NLCD data for 2001, 2006, and 2011 were reclassified to encompass only three classes (Table 1). These three classes represent undeveloped areas, areas with less than 80% impervious surface cover, and areas that are 80% or more covered by impervious surface.
+The land cover data used in this study comes from the National Land Cover Dataset (NLCD) and was obtained from the U.S. Geological Survey (USGS). Land cover data in this dataset are available at 30-meter resolution every five years from 2001 to 2011 (thus far). The NLCD classes are consistent between the 2001, 2006, and 2011 land cover maps and the the Multi-Resolution Land Characteristics Consortium (MRLC) asserts that they can be used for longitudinal studies from 2001 to 2011 [@USGS2014]. The classes are several and most are not relevant to this study. Consequently, the NLCD data for 2001, 2006, and 2011 were reclassified to encompass only three classes (Table 1). These three classes represent undeveloped areas, areas with less than 80% impervious surface cover, and areas that are 80% or more covered by impervious surface.
 
 ```{r reclass.explication, message=FALSE, warning=FALSE, echo=FALSE}
 require(pander)
@@ -92,33 +92,33 @@ pander(data.frame('Input Class Range'=c('[0-10] (Unused in NLCD)',
 
 ### Socioeconomic and Demographic Data
 
-U.S. Census and American Community Survey (ACS) data were used to obtain socioeconomic (e.g., median household income) and demographic (e.g., sex and racial make-up) data on Detroit communities. Ordinarily, obtaining the comprehensive census measures desired in an open-ended study directly from a U.S. government website can be difficult. To expedite data processing, these U.S. Census and ACS data were downloaded from SocialExplorer.org [@Explorer2014], a website that offers a user-friendly interface for downloading census data by census tract or other geographic subset.
+U.S. Census and American Community Survey (ACS) data were used to obtain socioeconomic (e.g., median household income) and demographic (e.g., sex and racial make-up) data on Detroit communities. To expedite data processing, comprehensive U.S. Census and ACS data were downloaded from SocialExplorer.org [@Explorer2014], a website that offers a user-friendly interface for downloading census data by census tract or other geographic subset.
 
-As census tract boundaries can change between census years (and did change between 2001 and 2010), a necessary first step to using the census data in this study included cross-walking 2001 census data to the 2010 census tract boundaries. This was facilitated by the use of crosswalk tables developed by Logan et al. [-@Logan2014]. Census data were also normalized so as to eliminate the effects of census tract land area, total population, total number of housing units, and total household population. Some census variables, such as population density and median household income, were intrinsically scale-independent and did not need to be normalized. The census variables were chosen so that only variables jointly present across the 2001 U.S. Census, 2006-2010 ACS, and 2008-2012 ACS were considered. It is worth remarking that while this ensures every training and prediction dataset has the same variables, the model used in this paper does not require simultaneous observations of every variable (that is, it tolerates missing data).
+As census tract boundaries can change between census years (and did change between 2001 and 2010), a necessary first step to using the census data in this study included cross-walking 2001 census data to the 2010 census tract boundaries. This was facilitated by the use of crosswalk tables developed by Logan et al. [-@Logan2014]. Census data were also normalized as appropriate so as to eliminate the effects of census tract land area, total population, total number of housing units, and total household population. The census variables were chosen so that only variables jointly present across the 2001 U.S. Census, 2006-2010 ACS, and 2008-2012 ACS were considered.
 
 ### Landscape Measures
 
-Two additional predictors were initially considered: distance to major roads and distance to parks and open recreation areas. These were derived from maps of roads, obtained from the Michigan Geographic Data Library [@Michigan2014], and of parks and open recreation areas, obtained from the Southeastern Michigan Council of Governments, and were both rasterized to 30 meters, matching the resolution of the land cover data. Proximities to roads and parks were then calculated from these layers using the Geospatial Data Abstraction Library [@Team2014].
+Two additional predictors were initially considered: distance to major roads and distance to parks and open recreation areas. These were derived from maps of roads, obtained from the Michigan Geographic Data Library [@Michigan2014], and of parks and open recreation areas, obtained from the Southeastern Michigan Council of Governments (SEMCOG), and were both rasterized to 30 meters, matching the resolution of the land cover data. Proximities to roads and parks were then calculated from these layers using the Geospatial Data Abstraction Library [@Team2014].
 
 ## Finding Independent Predictors
 
 After the reclassified land cover data, census measures, and landscape data were spatially joined in R, Pearson's correlation coefficients were calculated for every pair of independent predictors. A threshold of $R^2=\pm 0.5$ was chosen as the cut-off for collinearity; a correlation above this threshold was interpreted to mean that one of the two variables had to be left out of the model. Although multicollinearity is not a serious concern for purely predictive models, as the objective of this model is explanatory, minimizing multicollinearity is essential so as to avoid artificially inflating parameter values.
 
-A number of highly correlated "clusters" were located from these pair-wise tests. Population density, number of married households, and number of family households were one such cluster. Median household income, proportion of housing occupied, proportion of housing occupied by the owner, and proportion of the population poor or struggling were found to be correlated with one another. Male and female populations were obviously highly correlated with one another. Other census measures, including any measure of racial make-up, were all highly correlated with one another. From these clusters, independent measures were somewhat arbitrarily chosen. For instance, male population was selected where the variable female population would have presumably been equivalent in the model. Population density and median household income, however, were chosen specifically because it is assumed that such data are more likely to be available on fine time scales from sources other than the U.S. Census.
+A number of highly correlated "clusters" were located from these pair-wise tests. Population density, number of married households, and number of family households were one such cluster. Median household income, proportion of housing occupied, proportion of housing occupied by the owner, and proportion of the population poor or struggling were found to be correlated with one another. Male and female populations were obviously highly correlated with one another. Other census measures, including any measure of racial make-up, were all highly correlated with one another. From these clusters, independent measures were somewhat arbitrarily chosen.
 
-Distance to roads and population density were found to be marginally correlated ($R^2\approx \pm 0.5$) with previous ("old") land cover and therefore were dropped from the final model (as dropping "old" land cover is not an option). The final variables included in the model were therefore: Median household income, proportion of the population poor or struggling, proportion of the population that is male, old and new land cover, and proximity to parks and open areas. All the predictor variables were discretized into two quantiles (a median split of the data) with the exception of previous land cover, which, as with future land cover, was already discretized into three classes.
+Distance to roads and population density were found to be marginally correlated ($R^2\approx \pm 0.5$) with previous ("old") land cover and were therefore dropped from the final model (as dropping "old" land cover is not an option). The final variables included in the model were: Median household income, proportion of the population poor or struggling, proportion of the population that is male, old and new land cover, and proximity to parks and open areas. All the predictor variables were discretized into two quantiles (a median split of the data) with the exception of previous land cover, which, as with future land cover, was already discretized into three classes.
 
 ## The Model
 
-The modeling approach in this study involves the use of Bayesian networks, which are also known variously as belief networks, Bayesian belief networks, Bayes nets, and causal probabilistic networks [@Uusitalo2007]. Bayesian networks (BNs) are directed, acyclic graphs [@Nagarajan2013]. Each node in the graph is a variable and no meaningful discting between "predictor" or "response" variable is made. Nodes connected to other nodes imply a conditional dependence in a certain direction (hence, the graph is directed) and the links between them cannot form cycles (hence, the graph is acyclic). BNs must also exhibit the Markov property; that is, the conditional probability of any node must depend only on its immediate parents. A more rigorous statement of this property is that the nodes must be \textit{d-separated}, a concept that is beyond the scope of this paper (see Charniak et al. [-@Charniak1991] and Nagarajan et al. [-@Nagarajan2013] for more details).
+The modeling approach in this study involves the use of Bayesian networks, which are also known variously as belief networks, Bayesian belief networks, Bayes nets, and causal probabilistic networks [@Uusitalo2007]. Bayesian networks (BNs) are directed, acyclic graphs [@Nagarajan2013]. Each node in the graph is a variable and the probabilities of both "predictor" and "response" variables can be queried. Nodes connected to one another imply a conditional dependence in a certain direction (hence, the graph is directed) and the links between them cannot form cycles (hence, the graph is acyclic). BNs must also exhibit the Markov property; that is, the conditional probability of any node must depend only on its immediate parents [@Charniak1991;@Nagarajan2013].
 
-In general, BNs are either discrete or continuous; discrete and continuous variables are usually not mixed and software tools that support mixed types in the network are not common [@Uusitalo2007;@Nagarajan2013]. This is to facilitate calculating the joint probability distribution, which is either a multinomial distribution in the case of discrete-valued variables or a Gaussian distribution in the case of continuous values. When the variables that make up the nodes take on continuous values, the probability distribution of each node is a normal distribution and the resulting network that is formed is termed a Gaussian Bayesian network. In the case of continuous variables, the parameters are just regression coefficients. Because the nodes of a Bayesian network are linked, multivariate regression is performed to predict the distribution arising at each node in the network, providing regression coefficients for each pairwise interaction between a node and its connections [@Nagarajan2013].
+In general, BNs are either discrete or continuous; discrete and continuous variables are usually not mixed and software tools that support mixed types in the network are not common [@Uusitalo2007;@Nagarajan2013]. This is to facilitate calculating the joint probability distribution, which is either a multinomial distribution in the case of discrete-valued variables or a Gaussian distribution in the case of continuous values. In the case of continuous variables, the parameters are just regression coefficients. Because the nodes of a Bayesian network are linked, multivariate regression is performed to predict the distribution arising at each node in the network, providing regression coefficients for each pairwise interaction between a node and its connections [@Nagarajan2013].
 
-Training a Bayesian network generally consists of two steps: learning the network structure and then fitting the parameters. In some studies, the network structure may be known or specified by an expert. The conditional probability tables (CPTs) for some or all of the variables might also be specified by an expert [@Kocabas2007]. In this study, there was not sufficient domain knowledge on hand to esimate the CPTs but an "expert" network structure was specified
+Training a Bayesian network generally consists of two steps: learning the network structure and then fitting the parameters. In some studies, the network structure may be known or specified by an expert. The conditional probability tables (CPTs) for some or all of the variables might also be specified by an expert [@Kocabas2007]. In this study, there was not sufficient domain knowledge on hand to esimate the CPTs but an "expert" network structure was specified by the author.
 
 ### Learning Network Structure
 
-Structure learning is computationally intensive but many different algorithms are available that are all tractable on end-user hardware. Three classes of network learning---algorithms, constraint-based, score-based, and hybrid algorithms---were used to investigate possible network structures and to select a stable (consistent) structure for modeling. The algorithms used were all available in the \texttt{bnlearn} package for R. A random sample of the discrete training data was used to learn the network structure using a variety of constraint-based, score-based, and hybrid network learning algorithms. Most of the algorithms produced extremely dense graphs including many complete graphs. Ultimately, two hybrid algorithms, General 2-Phase Restricted Maximization (RSMAX2) and Max-Min Hill Climbing (MMHC), agreed upon the same network structure. As this class of algorithms is considered to produce more reliable networks than alternative algorithms [@Nagarajan2013], their network structure was used for the "learned" model.
+Structure learning is computationally intensive but many different algorithms are available that are all tractable on end-user hardware. Three classes of network learning algorithms---all available in the \texttt{bnlearn} package for R---were used to investigate possible network structures and to select a stable (consistent) structure for modeling based on a random sample of the discrete training data. Most of the algorithms produced extremely dense graphs including many complete graphs. Ultimately, two hybrid algorithms, General 2-Phase Restricted Maximization (RSMAX2) and Max-Min Hill Climbing (MMHC), agreed upon the same network structure. As this class of algorithms is considered to produce more reliable networks than alternative algorithms [@Nagarajan2013], their network structure was used for the "learned" model.
 
 In addition to the learned network, an "expert" network was specified based on the author's beliefs about conditional dependencies between predictor variables. When scored using a second random sample disjoint from the fitting sample, the expert network was found to be superior to the learned network according to Bayes' Information Criterion (BIC). This may only be because the expert network is more sparse than the learned network.
 
@@ -126,7 +126,7 @@ In addition to the learned network, an "expert" network was specified based on t
 
 Parameter learning is generally done through a maximum likelihood approach (whereby the best fit parameters are estimated) or a Bayesian approach (whereby the posterior distribution of the parameters for a discrete distribution is estimated). The Bayesian approach is preferred as it provides more robust estimates and guarantees the conditional probability tables will be complete [@Nagarajan2013]. This is the approach used in this paper.
 
-The BNs were trained from the high-resolution, 30-meter land cover data and landscape measures joined to the coarse-resolution census data. The 2001 observed land cover from NLCD was used as the "old" land cover while 2006 was used as the "new" land cover. A three-folds random sample of the combined predictors was created so that the samples used to learn the network structure, score the network structure, and fit the model were disjoint. Each disjoint sample contains less than 4% of the complete dataset. The "expert" and the "learned" networks were fitted with the same sample.
+The BNs were trained from the high-resolution, 30-meter land cover data from 2001 and landscape measures joined to the coarse-resolution census data for 2006. A three-folds random sample of the combined predictors was created so that the samples used to learn the network structure, score the network structure, and fit the model were disjoint. Each disjoint sample contains less than 4% of the complete dataset. The "expert" and the "learned" networks were fitted with the same sample.
 
 ## Prediction
 
@@ -136,7 +136,7 @@ The predictor variables were aggregated to 300 meters to reduce the computationa
 1. Obtain the posterior probability distributions given the evidence.
 1. Considering the ``new'' land cover variable, choose the outcome (land cover) from the posterior probability distribution.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, fit.height=3, fig.cap='A Bayesian network prediction without masking'}
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, out.height="2.3in", fig.align='center', fig.cap='A Bayesian network prediction without masking'}
 require(raster)
 require(rgdal)
 load(file='rda/outputsUnmasked2011.rda')
@@ -145,15 +145,13 @@ require(RColorBrewer)
 cols <- brewer.pal(3, 'YlGnBu')
 
 par(xpd=FALSE)
-plot(output.expert.2011, col=cols, axes=FALSE, box=FALSE, legend=FALSE,
-     xlab='Easting (meters)', ylab='Northing (meters)')
-axis(1); axis(2);
+plot(output.expert.2011, col=cols, axes=FALSE, box=FALSE, legend=FALSE)
 par(xpd=TRUE)
 legend('right', bty="n", title='', fill=rev(cols), inset=c(-0.4, 0),
        legend=c('High-Intensity', 'Low-Intensity', 'Undeveloped'))
 ```
 
-One of the virtues of BNs is that predictions do not require a simultaneous observation of all predictor variables; even just one predictor variable can be used as evidence. This would be useful, for instance, in the prediction of 2011 land cover prediction from the 2010 U.S. Census as this census did not include the "median household income" or "population poor or struggling" variables, which had been used to develop and train the network. The predictions made before evidence and after seeing the evidence can be appreciated graphically in Figure 1, which shows an arbitrary prediction made one of the BNs before the "no data" areas were masked. In this figure, one can see that in the "no data" areas to the lower right there is what looks like noise. This is an area where, without any evidence to show to our model, predictions of future land cover are pulled from the prior distribution. When predictions are made in areas where evidence exists, however, the posterior distribution is obtained and structure emerges.
+One of the virtues of BNs is that predictions do not require a simultaneous observation of all predictor variables; even just one predictor variable can be used as evidence. This would be useful, for instance, in the prediction of 2011 land cover prediction from the 2010 U.S. Census as this census did not include the "median household income" or "population poor or struggling" variables, which had been used to develop and train the network. The predictions made before evidence and after seeing the evidence can be appreciated graphically in Figure 1, which shows an arbitrary prediction made one of the BNs before the "no data" areas were masked. In this figure, one can see that in the "no data" areas to the lower right there is what looks like random noise. This is an area where, without any evidence to show to our model, predictions of future land cover are pulled from the prior distribution. When predictions are made in areas where evidence exists, however, the posterior distribution is obtained and structure emerges.
 
 Land cover predictions were made from both the expert and learned networks for two years, 2006 and 2011, using the 2006-2010 and 2008-2012 ACS data, respectively. In predicting 2006 land cover, the 2001 observed land cover was used as the "old" land cover; for 2011 predictions, the 2006 observed land cover was used. The roads and parks layers remained the same for any year as it is not known what date(s) they represent. They are assumed to be accurate throughout the time period studied, i.e., it is assumed that roads and parks did not change between 2001 and 2011.
 
@@ -161,7 +159,7 @@ Land cover predictions were made from both the expert and learned networks for t
 
 Results are shown only from the expert network as the predictions made by this network and those of the learned network do not appreciably differ. The extent to which they differ can be studied in Table 2. Figure 2 shows the 2006 prediction by the expert network alongside the 2006 observed land cover map. Major features of the Detroit metropolitan area are immediately recognizable as high-intensity development in the prediction, even at this relatively coarse scale: Woodward Avenue, the Grosbeak Highway, the Jeffries Freeway.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results=FALSE, fig.cap='Observed land cover according to the NLCD in 2006 (left) and the 2006 prediction by the expert Bayesian network (right)', fig.width=7.5}
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results=FALSE, fig.cap='Observed land cover according to the NLCD in 2006 (left) and the 2006 prediction by the expert Bayesian network (right)', fig.width=7}
 require(raster)
 load(file='rda/caAggregates.rda')
 load(file='rda/layerStack2006.rda')
@@ -171,7 +169,7 @@ cols <- c('#FFFFFF', '#AACCEE', '#113355')
 dev2006 <- mask(dev2006, layers$male.pop, maskvalue=NA)
 counties <- spTransform(counties, crs(dev2006))
 
-par(mfcol=c(1,2))
+par(mfcol=c(1,2), cex.lab=0.8, cex.axis=0.8)
 par(xpd=FALSE)
 plot(dev2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE,
      xlab='Easting (meters)', ylab='Northing (meters)')
@@ -180,19 +178,19 @@ axis(1); axis(2)
 par(xpd=TRUE)
 legend('bottomright', legend=c('High-Intensity', 'Low-Intensity', 'Undeveloped'),
        fill=rev(cols), bty="n", title='Land Cover',
-       inset=c(-0.25, 0), cex=0.9)
+       inset=c(-0.3, 0), cex=0.9)
 plot(output.expert.2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE,
      xlab='Easting (meters)')
 plot(counties, border='#333333', add=TRUE)
 axis(1); axis(2)
-par(mfcol=c(1,1))
+par(mfcol=c(1,1), cex.lab=1.0, cex.axis=1.0)
 ```
 
 ## Model Criticism
 
-The prediction appears to be quite robust; so much so it is hard to tell the difference between the two images. This might be expected for an "in-fit" prediction as the 2006 observed land cover was used train the Bayesian networks. To better assess how either model performs we can look at the difference between observed and predicted land cover (Figure 3). In both years, the Detroit city core is estimated quite accurately. In the 2006 prediction, the model underestimates suburban development. Both years show considerable dispersion of development in the exurban areas at the northern and western edges of the three counties. In particular, the 2011 prediction overestimates development in large patches within the suburban areas of all three counties.
+The prediction appears to be quite robust; so much so it is hard to tell the difference between the two images. To better assess how either model performs we can look at the difference between observed and predicted land cover (Figure 3). In both years, the Detroit city core is estimated quite accurately. In the 2006 prediction, the model underestimates suburban development. Both years show considerable dispersion of development in the exurban areas at the northern and western edges of the three counties. In particular, the 2011 prediction overestimates development in large patches within the suburban areas of all three counties.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results=FALSE, fig.cap="Two expert model predictions subtracted from the respective year's observed land cover: 2006 (left) and 2011 (right)", fig.width=7.5}
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results=FALSE, fig.cap="Two expert model predictions subtracted from the respective year's observed land cover: 2006 (left) and 2011 (right)", fig.width=7}
 load(file='rda/layerStack2011.rda')
 load(file='rda/outputs2011.rda')
 dev2011 <- mask(dev2011, layers$male.pop, maskvalue=NA)
@@ -201,7 +199,7 @@ require(RColorBrewer)
 cols <- brewer.pal(5, 'RdYlBu')
 cols <- c(cols[1], '#FFFFFF', cols[5])
 
-par(mfcol=c(1,2))
+par(mfcol=c(1,2), cex.lab=0.8, cex.axis=0.8)#, mar=c(0,0,0,0))
 par(xpd=FALSE)
 plot(dev2006 - output.expert.2006, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
      legend=FALSE, xlab='Easting (meters)', ylab='Northing (meters)')
@@ -209,17 +207,23 @@ plot(counties, border='#333333', add=TRUE)
 axis(1); axis(2);
 par(xpd=TRUE)
 legend('bottomright', legend=c('Overestimated', 'Agreement', 'Underestimated'),
-       fill=cols, bty="n", title='Legend',
-       inset=c(-0.25, 0))
+       fill=cols, bty="n", title='Legend', cex=0.9,
+       inset=c(-0.3, 0))
 par(xpd=FALSE)
 plot(dev2011 - output.expert.2011, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
      legend=FALSE, xlab='Easting (meters)')
 plot(counties, border='#333333', add=TRUE)
 axis(1); axis(2);
-par(mfcol=c(1,1))
+par(mfcol=c(1,1), cex.lab=1.0, cex.axis=1.0)
 ```
 
 We can gain insight into the relationships between predictors by looking at the conditional probability tables (CPTs). Over the period from 2001 to 2006, the CPTs suggest a significantly higher probability, almost 4%, of land cover transitioning from undeveloped to low-intensity development than any other change. This indicates that the period was dominated by low-intensity development, which we can spatially locate to the suburbs by examining a difference map between the two years.
+
+# Conclusions
+
+The CPTs and overall model performance indicate that the model is good at reproducing static land cover patterns. In the prior distribution, land cover is overwhelmingly more likely to stay the same than it is to change. This intuitively makes sense, as the majority of pixels do not change from year-to-year. However, this imbues the model with a kind of inertia that makes it ill-suited for accurately modeling change. Indeed, when we examine just those pixels that were observed to change in the prediction year, we find that the model cannot account for change very well at all (Table 2).
+
+Fit statistics were calculated for both models and both years and reveal a very nice fit when the entire dataset, including unchanged pixels between time steps is considered (Table 2). When the model is validated against only those pixels that changed, however, we can see that the model is totally ineffective. Cohen's kappa indicates less agreement in these pixels than would be expected by chance and Spearman's rank correlation coefficient indicates there is no aggreement with the 2011 predictions tending towards complete disagreement. Given this poor performance for changed pixels, both BNs were were re-fitted to the changed pixels only. This resulted in overall poor predictions including in the areas that did not change land cover classes. Moreover, the resulting prediction maps showed class confusion where observed low-intensity development areas were predicted uniformly to be high-intensity areas.
 
 ```{r echo=FALSE}
 #stats <- read.csv('~/Workspace/TermProject/outputs/validation.csv')
@@ -238,15 +242,14 @@ pander::set.caption('Fit statistics for the expert and learned models as compare
 pander(s, justify=c('left', 'right', 'right', 'right', 'right'), style='grid')
 ```
 
-# Conclusions
 
-The CPTs and overall model performance indicate that the model is good at reproducing static land cover patterns. In the prior distribution, land cover is overwhelmingly more likely to stay the same than it is to change. This intuitively makes sense, as the majority of pixels do not change from year-to-year. However, this imbues the model with a kind of inertia that makes it ill-suited for accurately modeling change. Indeed, when we examine just those pixels that were observed to change in the prediction year, we find that the model cannot account for change very well at all, as indicated by Cohen's kappa and by Spearman's rank-correlation coefficient when applied over the changed pixels only (Table 2).
-
-* (Equifinality) [@Brown2013a]
+Also troubling is the problem of \textit{equifinality} [@Brown2013a] evident in the model. Both the expert and the learned model exhibited similar performance and their predictions are indistinguishable. Given the overall low level of uncertainty in the model outputs and the similarity of the uncertainties between both models, the prediction of one model could be seen as just an alternate, stochastic prediction of the other. This is not too surprising as both models were trained on the same data and their networks contain many of the same arcs, however, it does suggest that Bayesian network structure is of less importance than the fitting data, at least in this case.
 
 ## Suggested Improvements
 
-\newpage
+The shortcomings in this study likely stem from ill-posed datasets, inapporpriate model scale, and a modeling approach that does not take into account the temporal dynamics of the system (land cover change in Detroit urban areas). The use of a median split reduced every predictor variable to a binary variable which may be inappropriate, particularly given the land cover class confusion in the model when fitted only to the changed pixels. Carefully selecting multiple, reasonable breakpoints for discretizing the predictors may allow for more spatially accurate predictions of land cover and may also result in more generally representative CPTs. The model's spatial scale may also be too broad as the pixels that actually change are a small fraction of the independent observations, mostly unchanged pixels, that are used to fit the Bayesian network. By focusing on a small group of census tracts in neighborhoods-of-interest, one might be able to design a modeling approach that accounts for the factors influencing local neighborhood change.
+
+Finally, the modeling approach used in this study intrinsically assumes that static, independent observations of land cover, socioeconomic, demographic, and landscape measures are sufficiently representative at the spatial and temporal scales in this study to facilitate accurate prediction. That is obviously not the case. There is, however, a modeling approach with Bayesian networks that explicitly accounts for temporal dynamics, where the nodes of the BN are modeled as an autoregressive process. This is especially useful for modeling feedback in dynamic processes which may or may not be a helpful feature for modeling urban growth dynamics.
 
 # References
 

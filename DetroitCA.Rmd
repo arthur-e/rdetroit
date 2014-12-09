@@ -124,20 +124,20 @@ bn.fit.barchart(fit.expert$new)
 # A function to choose outcomes, one at a time, with the same probability as the given posterior distribution
 chooseOutcome <- function (posterior) {
   posterior <- sort(posterior)
-  
+
   # Sort the posterior probabilties by factors, e.g. "1=0.56,0=0.44" becomes "0=0.44,1=0.56"
   post <- numeric()
   for (i in seq.int(1, length(posterior))) {
     post[i] <- posterior[as.character(i - 1)]
   }
-  
+
   # Generate a vector of probability thresholds e.g. [0.0, 0.44] for transitions to [0, 1]; upper bound of p=1.0 is implied.
   prob <- rep(0, length(post))
   for (i in seq.int(length(post) - 1, 1, by=-1)) {
     j <- length(post) - i
     prob <- prob + c(rep(0, j), post[(j-1):(length(post)-j)])
   }
-  
+
   # Generate a random uniform deviate on [0, 1] to determine which factor to output
   r <- runif(1)
   for (i in seq.int(0, length(prob) - 2)) {
@@ -145,7 +145,7 @@ chooseOutcome <- function (posterior) {
       return(i) # p < threshold in e.g. [0, 0.44]? Output that factor
     }
   }
-  
+
   (length(prob) - 1) # p < implied upper bound of 1.0? Output last factor
 }
 ```

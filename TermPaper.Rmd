@@ -110,9 +110,7 @@ Distance to roads and population density were found to be marginally correlated 
 
 ## The Model
 
-The modeling approach in this study involves the use of Bayesian networks, which are also known variously as belief networks, Bayesian belief networks, Bayes nets, and causal probabilistic networks [@Uusitalo2007]. Bayesian networks are so-named for the Reverend Thomas Bayes (1702-1760) who is credited with first positing what has become known as Bayes' theory, a statement about conditional probabilities that allows for the calculation of "inverse probabilities" or the probability of one of a cause given its consequences.
-
-Bayesian networks (BNs) are directed, acyclic graphs [@Nagarajan2013]. Each node in the graph is a variable and no meaningful discting between "predictor" or "response" variable is made. Nodes connected to other nodes imply a conditional dependence in a certain direction (hence, the graph is directed) and the links between them cannot form cycles (hence, the graph is acyclic). BNs must also exhibit the Markov property; that is, the conditional probability of any node must depend only on its immediate parents. A more rigorous statement of this property is that the nodes must be \textit{d-separated}, a concept that is beyond the scope of this paper (see Charniak et al. [-@Charniak1991] and Nagarajan et al. [-@Nagarajan2013] for more details).
+The modeling approach in this study involves the use of Bayesian networks, which are also known variously as belief networks, Bayesian belief networks, Bayes nets, and causal probabilistic networks [@Uusitalo2007]. Bayesian networks (BNs) are directed, acyclic graphs [@Nagarajan2013]. Each node in the graph is a variable and no meaningful discting between "predictor" or "response" variable is made. Nodes connected to other nodes imply a conditional dependence in a certain direction (hence, the graph is directed) and the links between them cannot form cycles (hence, the graph is acyclic). BNs must also exhibit the Markov property; that is, the conditional probability of any node must depend only on its immediate parents. A more rigorous statement of this property is that the nodes must be \textit{d-separated}, a concept that is beyond the scope of this paper (see Charniak et al. [-@Charniak1991] and Nagarajan et al. [-@Nagarajan2013] for more details).
 
 In general, BNs are either discrete or continuous; discrete and continuous variables are usually not mixed and software tools that support mixed types in the network are not common [@Uusitalo2007;@Nagarajan2013]. This is to facilitate calculating the joint probability distribution, which is either a multinomial distribution in the case of discrete-valued variables or a Gaussian distribution in the case of continuous values. When the variables that make up the nodes take on continuous values, the probability distribution of each node is a normal distribution and the resulting network that is formed is termed a Gaussian Bayesian network. In the case of continuous variables, the parameters are just regression coefficients. Because the nodes of a Bayesian network are linked, multivariate regression is performed to predict the distribution arising at each node in the network, providing regression coefficients for each pairwise interaction between a node and its connections [@Nagarajan2013].
 
@@ -221,23 +219,30 @@ axis(1); axis(2);
 par(mfcol=c(1,1))
 ```
 
-Fit statistics are shown in Table 2. 
+We can gain insight into the relationships between predictors by looking at the conditional probability tables (CPTs). Over the period from 2001 to 2006, the CPTs suggest a significantly higher probability, almost 4%, of land cover transitioning from undeveloped to low-intensity development than any other change. This indicates that the period was dominated by low-intensity development, which we can spatially locate to the suburbs by examining a difference map between the two years.
 
-```{r}
-stats <- read.csv('~/Workspace/TermProject/outputs/validation.csv')
-names(stats) <- c('', "Cohen's kappa", 'No. Undev.', 'No. Low-Intensity',
-                  'No. High-Intensity')
-stats[,1] <- sapply(stats[,1], function (s) gsub('\\.', ' ', s))
+```{r echo=FALSE}
+#stats <- read.csv('~/Workspace/TermProject/outputs/validation.csv')
+load(file='rda/validationStats.rda')
+r.names <- sapply(row.names(stats), function (v) gsub('\\.', ' ', v))
+stats <- data.frame(apply(stats, 2, function (v) sprintf('%.4f', v)))
+s <- data.frame("Cohen's K"=stats$Cohens.Kappa,
+                "Cohen's K*"=stats$Cohens.K.Changed,
+                "Spearman's rho"=stats$Spearmans.Rho,
+                "Spearman's rho*"=stats$Spearmans.Rho.Changed,
+                check.names=FALSE,
+                row.names=r.names)
 require(pander)
 panderOptions('table.split.table', Inf)
-pander::set.caption('Reclassification table for the National Land Cover Dataset (NLCD)')
-pander(stats, justify=c('left', 'right', 'right', 'right', 'right'), style='grid')
+pander::set.caption('Fit statistics for the expert and learned models as compared to NLCD observations; the star (*) indicates that the statistic is applied to just the pixels that changed in the prediction year')
+pander(s, justify=c('left', 'right', 'right', 'right', 'right'), style='grid')
 ```
 
 # Conclusions
 
+The CPTs and overall model performance indicate that the model is good at reproducing static land cover patterns. In the prior distribution, land cover is overwhelmingly more likely to stay the same than it is to change. This intuitively makes sense, as the majority of pixels do not change from year-to-year. However, this imbues the model with a kind of inertia that makes it ill-suited for accurately modeling change. Indeed, when we examine just those pixels that were observed to change in the prediction year, we find that the model cannot account for change very well at all, as indicated by Cohen's kappa and by Spearman's rank-correlation coefficient when applied over the changed pixels only (Table 2).
+
 * (Equifinality) [@Brown2013a]
-* The conditional probability tables (CPTs) indicate that the model is good at reproducing static land cover patterns. In the prior distribution, land cover is overwhelmingly more likely to stay the same than it is to change. This intuitively makes sense, as the majority of pixels do not change from year-to-year. This implies that the model may be sensitive to spatial scale if the area ratios of land cover types are not preserved in scaling. Interestingly, the CPTs suggest a significantly higher probability, almost 4%, of land cover transitioning from undeveloped to low-intensity development than any other change. This indicates that the period from 2001 to 2006 was dominated by low-intensity development, which we can spatially locate to the suburbs by examining a difference map between the two years.
 
 ## Suggested Improvements
 

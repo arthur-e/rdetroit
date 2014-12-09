@@ -268,6 +268,7 @@ training.data <- subset(training, select=vars)
 # So, we discard road.proximity, pop.density
 vars <- c('new', names(dedup(training.data, 0.5)))
 training.data <- subset(training.data, select=vars)
+remove(training)
 
 ########################
 # Discretizing the data
@@ -281,16 +282,19 @@ training.discrete$new <- training.data$new
 training.discrete$old <- training.data$old
 
 # Creating a random sample...
-training.sample <- training.discrete[sample(nrow(training.discrete),
-                                            dim(training.discrete)[1]*0.1),]
+# training.sample <- training.discrete[sample(nrow(training.discrete),
+#                                             dim(training.discrete)[1]*0.1),]
+
+# Create a sub-sample with just those pixels that have changed
+training.sample <- subset(training.discrete, !old == new)
 
 # Compare to cut(), findInterval(), and converting to character vector first...
 require(parallel)
-training.sample$new <- mcmapply(as.factor, training.sample$new, mc.cores=3)
-training.sample$old <- mcmapply(as.factor, training.sample$old, mc.cores=3)
+training.sample$new <- mcmapply(as.factor, training.sample$new, mc.cores=4)
+training.sample$old <- mcmapply(as.factor, training.sample$old, mc.cores=4)
 
-save(training.data, training.sample, file='rda/trainingData.rda')
-load(file='rda/trainingData.rda')
+save(training.data, training.sample, file='rda/trainingData2.rda')
+# load(file='rda/trainingData2.rda')
 
 remove(cases, training, training.data, training.discrete)
 
@@ -312,21 +316,19 @@ plot(bnlearn::rsmax2(training.sample1));title('RSMAX2')
 # 2014-11-23
 # All of the network learning approaches produce a complete or near-complete graph when trained on the full dataset, subset by independent factors, or a random sample thereof. Worse still, no nodes have arcs directed towards new land cover. The complete graph can also be demonstrated to be inferior as it has a higher BIC relative to the more sparse, expert graph.
 
-dim(training.sample[training.sample$old != training.sample$new,])[1]
-training.sample0 <- subset(training.sample, !old == new)
-plot(bnlearn::hc(training.sample0, restart=1));title('Hill-Climbing')
-plot(bnlearn::hc(training.sample0,
+plot(bnlearn::hc(training.sample, restart=1));title('Hill-Climbing')
+plot(bnlearn::hc(training.sample,
                  restart=5));title('Hill-Climbing; Restarts=5')
-plot(bnlearn::hc(training.sample0,
+plot(bnlearn::hc(training.sample,
                  restart=10));title('Hill-Climbing; Restarts=10')
-plot(bnlearn::hc(training.sample0,
+plot(bnlearn::hc(training.sample,
                  restart=20));title('Hill-Climbing; Restarts=20')
-plot(bnlearn::hc(training.sample0,
+plot(bnlearn::hc(training.sample,
                  restart=10, perturb=5));title('Hill-Climbing; Restarts=10, Perturbations=5')
-plot(bnlearn::hc(training.sample0,
+plot(bnlearn::hc(training.sample,
                  restart=20, perturb=10));title('Hill-Climbing; Restarts=20, Perturbations=10')
-plot(bnlearn::rsmax2(training.sample0));title('Learned by RSMAX2')
-plot(bnlearn::mmhc(training.sample0));title('Learned by Max-Min Hill Climbing')
+plot(bnlearn::rsmax2(training.sample));title('Learned by RSMAX2')
+plot(bnlearn::mmhc(training.sample));title('Learned by Max-Min Hill Climbing')
 
 # We'll reverse the direction of just the pop.density <- new arc
 mmhc.dag <- bnlearn::mmhc(training.sample1)
@@ -336,8 +338,7 @@ dev.off()
 
 mmhc.dag <- set.arc(mmhc.dag, 'old', 'new')
 plot(mmhc.dag); title('Learned by Max-Min Hill Climbing; Revised by Expert')
-dev.copy(png, '~/Workspace/TermProject/outputs/graphics/bnlearn_graph_mmhc_revised.png')
-dev.off()
+#dev.copy(png, '~/Workspace/TermProject/outputs/graphics/bnlearn_graph_mmhc_revised.png'); dev.off()
 
 # 2014-11-23
 # When the data are trained on just that subset of pixels which have changed between 2001 and 2006, the graphs that are learned are still dense but the two hybrid algorithms produce a less dense graph that they agree on completely.
@@ -361,8 +362,7 @@ spec <- matrix(c('old', 'new', 'old', 'rec.area.proximity', 'male.pop', 'new', '
 expert.dag <- empty.graph(names(training.sample1))
 arcs(expert.dag) <- spec
 plot(expert.dag); title('Specified Network')
-dev.copy(png, '~/Workspace/TermProject/outputs/graphics/bnlearn_graph_expert.png')
-dev.off()
+# dev.copy(png, '~/Workspace/TermProject/outputs/graphics/bnlearn_graph_expert.png'); dev.off()
 
 #####################
 # Parameter learning
@@ -376,7 +376,7 @@ fit.mmhc <- bn.fit(mmhc.dag, data=training.sample2, method='bayes')
 fit.expert <- bn.fit(expert.dag, data=training.sample2, method='bayes')
 
 save(mmhc.dag, expert.dag, fit.mmhc, fit.expert, training.sample, file='rda/graphs.rda')
-load(file='rda/graphs.rda')
+# load(file='rda/graphs.rda')
 
 
 

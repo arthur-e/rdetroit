@@ -108,6 +108,18 @@ plot(dev2001); title('2001 Development Intensity at 300 meters')
 
 # Examining the Network
 
+## Examining Conditional Dependence
+
+```{r}
+load(file='rda/graphs.rda')
+
+require(lattice)
+require(bnlearn)
+bn.fit.barchart(fit.expert$new)
+```
+
+## Utility Functions
+
 ```{r}
 # A function to choose outcomes, one at a time, with the same probability as the given posterior distribution
 chooseOutcome <- function (posterior) {

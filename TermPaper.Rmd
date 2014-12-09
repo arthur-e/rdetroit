@@ -236,7 +236,8 @@ pander(stats, justify=c('left', 'right', 'right', 'right', 'right'), style='grid
 
 # Conclusions
 
-(Equifinality) [@Brown2013a]
+* (Equifinality) [@Brown2013a]
+* The conditional probability tables (CPTs) indicate that the model is good at reproducing static land cover patterns. In the prior distribution, land cover is overwhelmingly more likely to stay the same than it is to change. This intuitively makes sense, as the majority of pixels do not change from year-to-year. This implies that the model may be sensitive to spatial scale if the area ratios of land cover types are not preserved in scaling. Interestingly, the CPTs suggest a significantly higher probability, almost 4%, of land cover transitioning from undeveloped to low-intensity development than any other change. This indicates that the period from 2001 to 2006 was dominated by low-intensity development, which we can spatially locate to the suburbs by examining a difference map between the two years.
 
 ## Suggested Improvements
 

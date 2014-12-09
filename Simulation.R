@@ -298,21 +298,70 @@ stats['2011.expert', 'High.dev.freq'] <- count(samples.expert.2011, 'layer')[3,]
 tracts <- readOGR('/usr/local/dev/rdetroit/shp/t10_nad83.shp', 't10_nad83')
 tracts$FIPS <- tracts$GEOID10
 tracts <- subset(tracts, select=c('FIPS'))
-obs.2006.num.undev <- extract(dev2006, tracts, method='simple', df=TRUE, sp=TRUE,
-                              fun=function (v) length(v[v==0]))
-obs.2006.num.lowdev <- extract(dev2006, tracts, method='simple', df=TRUE, sp=TRUE,
-                               fun=function (v) length(v[v==1]))
-obs.2006.num.highdev <- extract(dev2006, tracts, method='simple', df=TRUE, sp=TRUE,
-                                fun=function (v) length(v[v==2]))
+obs.2006.prop.undev <- extract(dev2006, tracts, method='simple', df=TRUE, sp=TRUE,
+                               fun=function (v) length(v[v==0]) / length(v))
+obs.2006.prop.lowdev <- extract(dev2006, tracts, method='simple', df=TRUE, sp=TRUE,
+                                fun=function (v) length(v[v==1]) / length(v))
+obs.2006.prop.highdev <- extract(dev2006, tracts, method='simple', df=TRUE, sp=TRUE,
+                                 fun=function (v) length(v[v==2]) / length(v))
 
-obs.2011.num.undev <- extract(dev2011, tracts, method='simple', df=TRUE, sp=TRUE,
-                              fun=function (v) length(v[v==0]))
-obs.2011.num.lowdev <- extract(dev2011, tracts, method='simple', df=TRUE, sp=TRUE,
-                               fun=function (v) length(v[v==1]))
-obs.2011.num.highdev <- extract(dev2011, tracts, method='simple', df=TRUE, sp=TRUE,
-                                fun=function (v) length(v[v==2]))
+obs.2011.prop.undev <- extract(dev2011, tracts, method='simple', df=TRUE, sp=TRUE,
+                               fun=function (v) length(v[v==0]) / length(v))
+obs.2011.prop.lowdev <- extract(dev2011, tracts, method='simple', df=TRUE, sp=TRUE,
+                                fun=function (v) length(v[v==1]) / length(v))
+obs.2011.prop.highdev <- extract(dev2011, tracts, method='simple', df=TRUE, sp=TRUE,
+                                 fun=function (v) length(v[v==2]) / length(v))
 
-save(obs.2006.num.undev, obs.2006.num.lowdev, obs.2006.num.highdev, obs.2011.num.undev, obs.2011.num.lowdev, obs.2011.num.highdev, file='rda/zonalStatistics.rda')
+exp.2006.prop.undev <- extract(output.expert.2006, tracts, method='simple', df=TRUE, sp=TRUE,
+                               fun=function (v) length(v[v==0]) / length(v))
+exp.2006.prop.lowdev <- extract(output.expert.2006, tracts, method='simple', df=TRUE, sp=TRUE,
+                                fun=function (v) length(v[v==1]) / length(v))
+exp.2006.prop.highdev <- extract(output.expert.2006, tracts, method='simple', df=TRUE, sp=TRUE,
+                                 fun=function (v) length(v[v==2]) / length(v))
+
+exp.2011.prop.undev <- extract(output.expert.2011, tracts, method='simple', df=TRUE, sp=TRUE,
+                               fun=function (v) length(v[v==0]) / length(v))
+exp.2011.prop.lowdev <- extract(output.expert.2011, tracts, method='simple', df=TRUE, sp=TRUE,
+                                fun=function (v) length(v[v==1]) / length(v))
+exp.2011.prop.highdev <- extract(output.expert.2011, tracts, method='simple', df=TRUE, sp=TRUE,
+                                 fun=function (v) length(v[v==2]) / length(v))
+
+zonal.stats.obs <- data.frame(FIPS=obs.2006.prop.undev$FIPS,
+                          '2006 Observed: Undeveloped'=obs.2006.prop.undev$layer,
+                          '2006 Observed: Low-Intensity'=obs.2006.prop.lowdev$layer,
+                          '2006 Observed: High-Intensity'=obs.2006.prop.highdev$layer,
+                          '2011 Observed: Undeveloped'=obs.2011.prop.undev$layer,
+                          '2011 Observed: Low-Intensity'=obs.2011.prop.lowdev$layer,
+                          '2011 Observed: High-Intensity'=obs.2011.prop.highdev$layer,
+                          check.names=FALSE)
+zonal.stats.exp <- data.frame(FIPS=exp.2006.prop.undev$FIPS,
+                          '2006 Expert: Undeveloped'=exp.2006.prop.undev$layer,
+                          '2006 Expert: Low-Intensity'=exp.2006.prop.lowdev$layer,
+                          '2006 Expert: High-Intensity'=exp.2006.prop.highdev$layer,
+                          '2011 Expert: Undeveloped'=exp.2011.prop.undev$layer,
+                          '2011 Expert: Low-Intensity'=exp.2011.prop.lowdev$layer,
+                          '2011 Expert: High-Intensity'=exp.2011.prop.highdev$layer,
+                          check.names=FALSE)
+
+save(zonal.stats.obs, zonal.stats.exp, file='rda/zonalStatistics.rda')
+
+require(reshape2)
+require(ggplot2)
+ggplot(melt(zonal.stats.obs, id.vars='FIPS'), mapping=aes(group=variable, x=value)) +
+  geom_histogram() +
+  facet_wrap(~ variable) +
+  xlab('') +
+  ylab('Census Tract Count') +
+  theme_bw() +
+  theme(text=element_text(size=16))
+
+ggplot(melt(zonal.stats.exp, id.vars='FIPS'), mapping=aes(group=variable, x=value)) +
+  geom_histogram() +
+  facet_wrap(~ variable) +
+  xlab('') +
+  ylab('Census Tract Count') +
+  theme_bw() +
+  theme(text=element_text(size=16))
 
 write.csv(stats, file='~/Workspace/TermProject/outputs/validation.csv')
 

@@ -28,7 +28,7 @@ counties <- readOGR(paste0(file.loc, 'ancillary/co26_d00_select_nad83.shp'),
 
 # Background
 
-There are many motivations for studying urban environments and urban change in terms of land use or land cover changes. Studies include mitigating the impacts of urban sprawl [@Jantz2004], generating urban development scenarios [@Kocabas2007], or monitoring rates of urban growth and impervious surface increase [@Sexton2013]. To these ends, previous studies have employed a variety of models that attempt either to predict future future states of the landscape or to explain the drivers of urban change. Any land cover model can be located on this continuum between \textit{projection} and \textit{explanation} [@Brown2013a] and models generally excel at one purpose but are weak or not even applicable for the other.
+There are many motivations for studying urban environments and urban change in terms of land use or land cover changes. Studies include mitigating the impacts of urban sprawl [@Jantz2004], generating urban development scenarios [@Kocabas2007], or monitoring rates of urban growth and impervious surface increase [@Sexton2013]. To these ends, previous studies have employed a variety of models that attempt either to predict future states of the landscape or to explain the drivers of urban change. Any land cover model can be located on this continuum between \textit{projection} and \textit{explanation} [@Brown2013a] and models generally excel at one purpose but are weak or not even applicable for the other.
 
 Some ostensibly explanatory models are not easily interpretable despite the modeler's intentions. With some cellular automata models, a failure to reproduce fine-scale patterns and accurately locate urban growth may indicate a problem with the model's structure (transition rules, namely) but identifying which parts of the structure that are at fault can be challenging as it requires many different measures of model outcomes both quantitative and qualitative [@Brown2013a]. Bayesian networks (BNs) are a relatively recent [@Pearl1985] tool for estimating probabilities of occurrence given sparse observations and have been demonstrated to be useful for land cover modeling [@Kocabas2007]. Are BNs an \textit{interpretable} (explanatory) and yet spatially accurate modeling approach for investigating changes in urban land cover?
 
@@ -120,7 +120,7 @@ Training a Bayesian network generally consists of two steps: learning the networ
 
 Structure learning is computationally intensive but many different algorithms are available that are all tractable on end-user hardware. Three classes of network learning algorithms---all available in the \texttt{bnlearn} package for R---were used to investigate possible network structures and to select a stable (consistent) structure for modeling based on a random sample of the discrete training data. Most of the algorithms produced extremely dense graphs including many complete graphs. Ultimately, two hybrid algorithms, General 2-Phase Restricted Maximization (RSMAX2) and Max-Min Hill Climbing (MMHC), agreed upon the same network structure. As this class of algorithms is considered to produce more reliable networks than alternative algorithms [@Nagarajan2013], their network structure was used for the "learned" model.
 
-In addition to the learned network, an "expert" network was specified based on the author's beliefs about conditional dependencies between predictor variables. When scored using a second random sample disjoint from the fitting sample, the expert network was found to be superior to the learned network according to Bayes' Information Criterion (BIC). This may only be because the expert network is more sparse than the learned network.
+In addition to the learned network, an "expert" network was specified based on the author's beliefs about conditional dependencies between predictor variables. When scored using a second random sample disjoint from the fitting sample, the learend network was found to be significantly superior to the expert network according to Bayes' Information Criterion (BIC) and the likelihood-ratio test. More dense networks are penalized by BIC but, in this case, the expert and learned networks have the same number of arcs.
 
 ### Fitting the Parameters
 
@@ -169,7 +169,8 @@ cols <- c('#FFFFFF', '#AACCEE', '#113355')
 dev2006 <- mask(dev2006, layers$male.pop, maskvalue=NA)
 counties <- spTransform(counties, crs(dev2006))
 
-par(mfcol=c(1,2), cex.lab=0.8, cex.axis=0.8)
+par(mfcol=c(1,2), cex.lab=0.8, cex.axis=0.8, mar=c(6,4,4,2), oma=c(1,0,0,0),
+    mgp=c(2,1,0))
 par(xpd=FALSE)
 plot(dev2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE,
      xlab='Easting (meters)', ylab='Northing (meters)')
@@ -190,6 +191,8 @@ par(mfcol=c(1,1), cex.lab=1.0, cex.axis=1.0)
 
 The prediction appears to be quite robust; so much so it is hard to tell the difference between the two images. To better assess how either model performs we can look at the difference between observed and predicted land cover (Figure 3). In both years, the Detroit city core is estimated quite accurately. In the 2006 prediction, the model underestimates suburban development. Both years show considerable dispersion of development in the exurban areas at the northern and western edges of the three counties. In particular, the 2011 prediction overestimates development in large patches within the suburban areas of all three counties.
 
+Over the period from 2001 to 2006, the conditional probability tables (CPTs) suggest a significantly higher probability, almost 4%, of land cover transitioning from undeveloped to low-intensity development than any other change. This indicates that the period was dominated by low-intensity development, which we can spatially locate to the suburbs by examining a difference map between the two years.
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results=FALSE, fig.cap="Two expert model predictions subtracted from the respective year's observed land cover: 2006 (left) and 2011 (right)", fig.width=7}
 load(file='rda/layerStack2011.rda')
 load(file='rda/outputs2011.rda')
@@ -199,7 +202,8 @@ require(RColorBrewer)
 cols <- brewer.pal(5, 'RdYlBu')
 cols <- c(cols[1], '#FFFFFF', cols[5])
 
-par(mfcol=c(1,2), cex.lab=0.8, cex.axis=0.8)#, mar=c(0,0,0,0))
+par(mfcol=c(1,2), cex.lab=0.8, cex.axis=0.8, mar=c(6,4,4,2), oma=c(1,0,0,0),
+    mgp=c(2,1,0))
 par(xpd=FALSE)
 plot(dev2006 - output.expert.2006, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
      legend=FALSE, xlab='Easting (meters)', ylab='Northing (meters)')
@@ -217,13 +221,11 @@ axis(1); axis(2);
 par(mfcol=c(1,1), cex.lab=1.0, cex.axis=1.0)
 ```
 
-We can gain insight into the relationships between predictors by looking at the conditional probability tables (CPTs). Over the period from 2001 to 2006, the CPTs suggest a significantly higher probability, almost 4%, of land cover transitioning from undeveloped to low-intensity development than any other change. This indicates that the period was dominated by low-intensity development, which we can spatially locate to the suburbs by examining a difference map between the two years.
+Fit statistics also show a nice fit when all pixels, whether they were observed to changed in the NLCD or not, are considered (Table 2). When the model is validated against only those pixels that changed, however, we can see that the model is totally ineffective. Cohen's kappa indicates less agreement in these pixels than would be expected by chance and Spearman's rank correlation coefficient indicates there is no aggreement with the 2011 predictions tending towards complete disagreement. Given this poor performance for changed pixels, both BNs were were re-fitted to the changed pixels only. This resulted in overall poor predictions including in the areas that did not change land cover classes. Moreover, the resulting prediction maps showed class confusion where observed low-intensity development areas were predicted uniformly to be high-intensity areas.
 
 # Conclusions
 
-The CPTs and overall model performance indicate that the model is good at reproducing static land cover patterns. In the prior distribution, land cover is overwhelmingly more likely to stay the same than it is to change. This intuitively makes sense, as the majority of pixels do not change from year-to-year. However, this imbues the model with a kind of inertia that makes it ill-suited for accurately modeling change. Indeed, when we examine just those pixels that were observed to change in the prediction year, we find that the model cannot account for change very well at all (Table 2).
-
-Fit statistics were calculated for both models and both years and reveal a very nice fit when the entire dataset, including unchanged pixels between time steps is considered (Table 2). When the model is validated against only those pixels that changed, however, we can see that the model is totally ineffective. Cohen's kappa indicates less agreement in these pixels than would be expected by chance and Spearman's rank correlation coefficient indicates there is no aggreement with the 2011 predictions tending towards complete disagreement. Given this poor performance for changed pixels, both BNs were were re-fitted to the changed pixels only. This resulted in overall poor predictions including in the areas that did not change land cover classes. Moreover, the resulting prediction maps showed class confusion where observed low-intensity development areas were predicted uniformly to be high-intensity areas.
+The CPTs and overall model performance indicate that, while the model is good at reproducing static land cover patterns, it fails to account for fine-scale, local changes between time steps. In the prior distribution, land cover is overwhelmingly more likely to stay the same than it is to change. This intuitively makes sense, as the majority of pixels do not change from year-to-year. However, this imbues the model with a kind of inertia that makes it ill-suited for accurately modeling change. Indeed, when we examine just those pixels that were observed to change in the prediction year, we find that the model cannot account for change very well at all (Table 2).
 
 ```{r echo=FALSE}
 #stats <- read.csv('~/Workspace/TermProject/outputs/validation.csv')
@@ -241,7 +243,6 @@ panderOptions('table.split.table', Inf)
 pander::set.caption('Fit statistics for the expert and learned models as compared to NLCD observations; the star (*) indicates that the statistic is applied to just the pixels that changed in the prediction year')
 pander(s, justify=c('left', 'right', 'right', 'right', 'right'), style='grid')
 ```
-
 
 Also troubling is the problem of \textit{equifinality} [@Brown2013a] evident in the model. Both the expert and the learned model exhibited similar performance and their predictions are indistinguishable. Given the overall low level of uncertainty in the model outputs and the similarity of the uncertainties between both models, the prediction of one model could be seen as just an alternate, stochastic prediction of the other. This is not too surprising as both models were trained on the same data and their networks contain many of the same arcs, however, it does suggest that Bayesian network structure is of less importance than the fitting data, at least in this case.
 

@@ -235,6 +235,11 @@ remove(rrast2001, rast2006, tracts, attr2000, attr2006, dev2001, dev2006,
 
 cases <- data.frame(t(combn(setdiff(colnames(training), c('new', 'FIPS')), 2)))
 
+# Must use ordered factors here or X1 and X2 will not line-up correctly in ddply()
+# See http://stackoverflow.com/questions/7235421/how-to-ddply-without-sorting
+cases$X1 <- factor(cases$X1, levels=colnames(tmp), ordered=TRUE)
+cases$X2 <- factor(cases$X2, levels=colnames(tmp), ordered=TRUE)
+
 require(plyr)
 corrs <- ddply(cases, ~ X1 + X2, mutate,
       r.sq=cor.test(training[,X1], training[,X2], method='pearson')$estimate,

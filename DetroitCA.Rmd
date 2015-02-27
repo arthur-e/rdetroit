@@ -326,11 +326,11 @@ cols[2] <- '#000000'
 
 # png(file='~/Workspace/TermProject/outputs/graphics/plot_2006_observed_minus_expert.png', height=722, width=712)
 plot(dev2006 - output.expert.2006, axes=FALSE, box=FALSE, col=c(cols[1], cols, cols[3]),
-     legend=FALSE, xlab='Easting (meters)', ylab='Northing (meters)')
+     legend=FALSE, xlab='Easting (meters)', ylab='Northing (meters)', cex.lab=1.5)
 axis(1); axis(2);
 legend('bottomright', legend=c('Overestimated', 'Agreement', 'Underestimated'),
-       fill=cols, bty="n", title='Development Prediction', cex=1.3)
-title('2006 Expert Graph Prediction Subtracted from Observed Land Cover')
+       fill=cols, bty="n", title='Development Prediction', cex=1.7)
+title('2006 Expert Graph Prediction Subtracted from Observed Land Cover', cex.main=1.5)
 # dev.off()
 ```
 
@@ -516,37 +516,43 @@ load(file='rda/transitionProbs2011.rda'); YEAR='2011'
 
 ```{r}
 # png(file=paste0('~/Workspace/TermProject/outputs/graphics/plot_', YEAR, '_expert_trans_probs_undeveloped.png'), height=722, width=712)
+par(cex.main=1.7)
 plot(trans.probs.expert$prob.undeveloped, bty='n', zlim=c(0, 1),
       xlab='Easting (meters)', ylab='Northing (meters)',
-      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE)
-legend('bottomright', fill=rev(cols), bty="n", title='Prob. Undeveloped', cex=1.3,
+      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE, cex.lab=1.5)
+legend('bottomright', fill=rev(cols), bty="n", title='Prob. Undeveloped', cex=1.7,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title(paste0(YEAR, ' Expert Graph Transition Probabilities: Undeveloped'))
+par(cex.main=1)
 # dev.off()
 ```
 
 ```{r}
 # png(file=paste0('~/Workspace/TermProject/outputs/graphics/plot_', YEAR, '_expert_trans_probs_lowdev.png'), height=722, width=712)
+par(cex.main=1.7)
 plot(trans.probs.expert$prob.low.dev, bty='n', zlim=c(0, 1),
       xlab='Easting (meters)', ylab='Northing (meters)',
-      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE)
-legend('bottomright', fill=rev(cols), bty="n", title='Prob. Low Dev.', cex=1.3,
+      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE, cex.lab=1.5)
+legend('bottomright', fill=rev(cols), bty="n", title='Prob. Low Dev.', cex=1.7,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title(paste0(YEAR, ' Expert Graph Transition Probabilities: Low Development'))
+par(cex.main=1)
 # dev.off()
 ```
 
 ```{r}
 # png(file=paste0('~/Workspace/TermProject/outputs/graphics/plot_', YEAR, '_expert_trans_probs_highdev.png'), height=722, width=712)
+par(cex.main=1.7)
 plot(trans.probs.expert$prob.high.dev, bty='n', zlim=c(0, 1),
       xlab='Easting (meters)', ylab='Northing (meters)',
-      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE)
-legend('bottomright', fill=rev(cols), bty="n", title='Prob. High Dev.', cex=1.3,
+      col=cols, breaks=seq(0, 1, by=0.2), legend=FALSE, box=FALSE, cex.lab=1.5)
+legend('bottomright', fill=rev(cols), bty="n", title='Prob. High Dev.', cex=1.7,
        legend=c('0.8 - 1.0', '0.6 - 0.8', '0.4 - 0.6', '0.2 - 0.4', '0 - 0.2'))
 plot(counties, col='#EEEEEE00', lwd=1, add=TRUE)
 title(paste0(YEAR, ' Expert Graph Transition Probabilities: High Development'))
+par(cex.main=1)
 # dev.off()
 ```
 
@@ -616,12 +622,15 @@ hist(trans.probs.expert$prob.high.dev - trans.probs.mmhc$prob.high.dev,
 # Validation
 
 ```{r}
+require(raster)
+
 load(file='rda/caAggregates.rda') # Replace dev2001 and dev2006 with aggregated
-dev2006 <- mask(dev2006, output.expert.2006, maskvalue=NA)
+load(file='rda/outputs2011.rda')
+dev2006 <- mask(dev2011, output.expert.2011, maskvalue=NA)
 
 # cols <- c('#FFFFFF', '#AACCEE', '#113355')
 # plot(output.mmhc.2006, axes=FALSE, box=FALSE, col=cols, legend=FALSE)
-pts <- as.data.frame(output.expert.2006, xy=TRUE)
+pts <- as.data.frame(output.expert.2011, xy=TRUE)
 pts$layer <- NULL
 # points(pts, col='red')
 
@@ -629,9 +638,9 @@ stats <- data.frame(matrix(nrow=3, ncol=5), row.names=c('observed', 'expert', 'l
 names(stats) <- c('Cohens.Kappa', 'Undev.freq', 'Low.dev.freq', 'High.dev.freq', 'Compactness')
 
 require(raster)
-samples.observed <- extract(dev2006, pts, df=TRUE, factors=TRUE)
-samples.mmhc.2006 <- extract(output.mmhc.2006, pts, df=TRUE, factors=TRUE)
-samples.expert.2006 <- extract(output.expert.2006, pts, df=TRUE, factors=TRUE)
+samples.observed <- extract(dev2011, pts, df=TRUE, factors=TRUE)
+samples.mmhc.2011 <- extract(output.mmhc.2011, pts, df=TRUE, factors=TRUE)
+samples.expert.2011 <- extract(output.expert.2011, pts, df=TRUE, factors=TRUE)
 ```
 
 ## Agreement with Observed
@@ -643,9 +652,9 @@ require(lpSolve)
 require(irr)
 
 stats['expert', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed$layer,
-                                                     guess=samples.expert.2006$layer))$value
+                                                     guess=samples.expert.2011$layer))$value
 stats['learned', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed$layer,
-                                                      guess=samples.mmhc.2006$layer))$value
+                                                      guess=samples.mmhc.2011$layer))$value
 ```
 
 ## Class Frequencies
@@ -654,12 +663,12 @@ stats['learned', 'Cohens.Kappa'] <- kappa2(data.frame(actual=samples.observed$la
 stats['observed', 'Undev.freq'] <- count(samples.observed, 'layer')[1,]$freq
 stats['observed', 'Low.dev.freq'] <- count(samples.observed, 'layer')[2,]$freq
 stats['observed', 'High.dev.freq'] <- count(samples.observed, 'layer')[3,]$freq
-stats['learned', 'Undev.freq'] <- count(samples.mmhc.2006, 'layer')[1,]$freq
-stats['learned', 'Low.dev.freq'] <- count(samples.mmhc.2006, 'layer')[2,]$freq
-stats['learned', 'High.dev.freq'] <- count(samples.mmhc.2006, 'layer')[3,]$freq
-stats['expert', 'Undev.freq'] <- count(samples.expert.2006, 'layer')[1,]$freq
-stats['expert', 'Low.dev.freq'] <- count(samples.expert.2006, 'layer')[2,]$freq
-stats['expert', 'High.dev.freq'] <- count(samples.expert.2006, 'layer')[3,]$freq
+stats['learned', 'Undev.freq'] <- count(samples.mmhc.2011, 'layer')[1,]$freq
+stats['learned', 'Low.dev.freq'] <- count(samples.mmhc.2011, 'layer')[2,]$freq
+stats['learned', 'High.dev.freq'] <- count(samples.mmhc.2011, 'layer')[3,]$freq
+stats['expert', 'Undev.freq'] <- count(samples.expert.2011, 'layer')[1,]$freq
+stats['expert', 'Low.dev.freq'] <- count(samples.expert.2011, 'layer')[2,]$freq
+stats['expert', 'High.dev.freq'] <- count(samples.expert.2011, 'layer')[3,]$freq
 
 write.csv(stats, file='~/Workspace/TermProject/outputs/validation.csv')
 ```

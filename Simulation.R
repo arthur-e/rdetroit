@@ -166,7 +166,7 @@ output.mmhc.2011 <- stackApply(layers, rep(1, length(names(layers))), function (
 })
 
 save(output.mmhc.2011, output.expert.2011, file='rda/outputsUnmasked2011.rda')
-load(file='rda/outputsUnmasked2011.rda')
+# load(file='rda/outputsUnmasked2011.rda')
 
 output.mmhc.2011 <- mask(output.mmhc.2011, layers$male.pop, maskvalue=NA)
 output.expert.2011 <- mask(output.expert.2011, layers$male.pop, maskvalue=NA)
@@ -176,6 +176,9 @@ save(output.mmhc.2011, output.expert.2011, file='rda/outputs2011.rda')
 
 #########################################
 # Transition probabilities: Expert graph
+
+require(gRain)
+prior <- prior.expert
 
 # Figure out the order of the factors returned from the prior distribution (it isn't guaranteed to be in a predictable order); this is the order of the layers in the transition probabilties RasterStack
 labels <- c('0'='prob.undeveloped', '1'='prob.low.dev', '2'='prob.high.dev')
